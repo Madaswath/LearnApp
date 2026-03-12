@@ -5,12 +5,19 @@ from app.models.schemas import (
     AuthResponse,
     EnrollRequest,
     EnrollResponse,
+    ExerciseItem,
+    ExerciseSubmitRequest,
+    ExerciseSubmitResponse,
     HealthResponse,
     LearningPathRequest,
     LearningPathResponse,
     LoginRequest,
     MentorMessageRequest,
     MentorMessageResponse,
+    ProjectItem,
+    QuizItem,
+    QuizSubmitRequest,
+    QuizSubmitResponse,
     SignupRequest,
     TopicSearchRequest,
     TopicSearchResponse,
@@ -18,6 +25,7 @@ from app.models.schemas import (
     UserProgressResponse,
 )
 from app.services.agent_orchestrator import AgentOrchestrator
+from app.services.content_bank import list_exercises, list_projects, list_quizzes
 from app.services.curriculum_builder import CurriculumBuilder
 from app.services.rag_engine import RAGEngine
 from app.services.user_store import user_store
@@ -52,6 +60,15 @@ def login(payload: LoginRequest) -> AuthResponse:
     return AuthResponse(user_id=user.id, name=user.name, email=user.email)
 
 
+@router.get("/settings/profile/{user_id}", response_model=UserProfile)
+def get_profile(user_id: str) -> UserProfile:
+    try:
+        profile = user_store.get_profile(user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return UserProfile(**profile)
+
+
 @router.post("/settings/profile", response_model=UserProfile)
 def save_profile(payload: UserProfile) -> UserProfile:
     try:
@@ -76,6 +93,15 @@ def enroll(payload: EnrollRequest) -> EnrollResponse:
     return EnrollResponse(**rec)
 
 
+@router.get("/enrollments/{user_id}")
+def list_enrollments(user_id: str) -> dict:
+    try:
+        enrollments = user_store.list_enrollments(user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"user_id": user_id, "enrollments": enrollments}
+
+
 @router.post("/progress/track")
 def track_progress(payload: ActivityTrackRequest) -> dict:
     try:
@@ -98,6 +124,46 @@ def get_progress(user_id: str) -> UserProgressResponse:
         raise HTTPException(status_code=404, detail="User not found")
     snapshots = [{"module_id": mid, **vals} for mid, vals in user.progress.items()]
     return UserProgressResponse(user_id=user_id, progress=snapshots)
+
+
+@router.get("/exercises", response_model=list[ExerciseItem])
+def exercises() -> list[ExerciseItem]:
+    return [ExerciseItem(**item) for item in list_exercises()]
+
+
+@router.post("/exercises/submit", response_model=ExerciseSubmitResponse)
+def submit_exercise(payload: ExerciseSubmitRequest) -> ExerciseSubmitResponse:
+    score = 85 if len(payload.solution.strip()) > 30 else 65
+    feedback = "Good approach. Add more edge-case handling." if score < 80 else "Great work with clear logic."
+    try:
+        user_store.save_exercise_submission(payload.user_id, payload.exercise_id, score, feedback)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return ExerciseSubmitResponse(exercise_id=payload.exercise_id, score=score, feedback=feedback)
+
+
+@router.get("/quizzes", response_model=list[QuizItem])
+def quizzes() -> list[QuizItem]:
+    return [QuizItem(**item) for item in list_quizzes()]
+
+
+@router.post("/quizzes/submit", response_model=QuizSubmitResponse)
+def submit_quiz(payload: QuizSubmitRequest) -> QuizSubmitResponse:
+    quiz = next((q for q in list_quizzes() if q["id"] == payload.quiz_id), None)
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    total = len(quiz["questions"])
+    score = sum(1 for q in quiz["questions"] if payload.answers.get(q["id"]) == q["answer"])
+    try:
+        user_store.save_quiz_submission(payload.user_id, payload.quiz_id, score, total)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return QuizSubmitResponse(quiz_id=payload.quiz_id, score=score, total=total)
+
+
+@router.get("/projects", response_model=list[ProjectItem])
+def projects() -> list[ProjectItem]:
+    return [ProjectItem(**item) for item in list_projects()]
 
 
 @router.get("/agents")

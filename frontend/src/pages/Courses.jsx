@@ -1,10 +1,21 @@
-import { useState } from 'react'
-import { enrollModule, searchTopicModules, trackProgress } from '../services/api'
+import { useEffect, useState } from 'react'
+import { enrollModule, fetchEnrollments, searchTopicModules, trackProgress } from '../services/api'
 
 export default function Courses({ user }) {
   const [topic, setTopic] = useState('Deep Learning')
   const [result, setResult] = useState(null)
   const [message, setMessage] = useState('')
+  const [enrollments, setEnrollments] = useState([])
+
+  const refreshEnrollments = () => {
+    fetchEnrollments(user.user_id)
+      .then((res) => setEnrollments(res.enrollments || []))
+      .catch(() => setEnrollments([]))
+  }
+
+  useEffect(() => {
+    refreshEnrollments()
+  }, [user.user_id])
 
   const onSearch = async () => {
     setMessage('')
@@ -21,6 +32,7 @@ export default function Courses({ user }) {
       difficulty: module.difficulty,
     })
     setMessage(`Enrolled in ${enrolled.module_title} (${enrolled.difficulty}).`)
+    refreshEnrollments()
   }
 
   const onActivity = async (module) => {
@@ -42,6 +54,18 @@ export default function Courses({ user }) {
         <button onClick={onSearch} className="bg-indigo-600 px-4 py-2 rounded">Search</button>
       </div>
       {message && <div className="card text-emerald-300">{message}</div>}
+
+      <div className="card">
+        <h3 className="font-semibold mb-2">My Enrollments</h3>
+        {enrollments.length === 0 ? (
+          <p className="text-slate-400 text-sm">No enrollments yet.</p>
+        ) : (
+          <ul className="list-disc pl-6 text-slate-300 text-sm">
+            {enrollments.map((en) => <li key={en.id}>{en.module_title} ({en.difficulty})</li>)}
+          </ul>
+        )}
+      </div>
+
       {result && (
         <div className="space-y-4">
           {result.modules.map((module) => (

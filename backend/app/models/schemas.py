@@ -92,6 +92,59 @@ class UserProgressResponse(BaseModel):
     progress: List[ProgressSnapshot]
 
 
+class ExerciseItem(BaseModel):
+    id: str
+    title: str
+    difficulty: str
+    prompt: str
+
+
+class ExerciseSubmitRequest(BaseModel):
+    user_id: str
+    exercise_id: str
+    solution: str
+
+
+class ExerciseSubmitResponse(BaseModel):
+    exercise_id: str
+    score: int
+    feedback: str
+
+
+class QuizQuestion(BaseModel):
+    id: str
+    question: str
+    options: List[str]
+    answer: str
+
+
+class QuizItem(BaseModel):
+    id: str
+    title: str
+    difficulty: str
+    questions: List[QuizQuestion]
+
+
+class QuizSubmitRequest(BaseModel):
+    user_id: str
+    quiz_id: str
+    answers: Dict[str, str]
+
+
+class QuizSubmitResponse(BaseModel):
+    quiz_id: str
+    score: int
+    total: int
+
+
+class ProjectItem(BaseModel):
+    id: str
+    title: str
+    level: str
+    brief: str
+    milestones: List[str]
+
+
 class LearningPathRequest(BaseModel):
     user_id: str
     topic: str

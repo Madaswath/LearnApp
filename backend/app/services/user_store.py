@@ -16,6 +16,8 @@ class UserRecord:
     profile: Dict = field(default_factory=dict)
     enrollments: List[Dict] = field(default_factory=list)
     progress: Dict[str, Dict] = field(default_factory=dict)
+    exercise_submissions: List[Dict] = field(default_factory=list)
+    quiz_submissions: List[Dict] = field(default_factory=list)
 
 
 class InMemoryUserStore:
@@ -49,6 +51,22 @@ class InMemoryUserStore:
         user.profile = profile
         return user.profile
 
+    def get_profile(self, user_id: str) -> Dict:
+        user = self.get_user(user_id)
+        if not user:
+            raise ValueError("User not found")
+        if user.profile:
+            return user.profile
+        return {
+            "user_id": user.id,
+            "full_name": user.name,
+            "bio": "",
+            "location": "",
+            "learning_style": "",
+            "pace": "",
+            "goals": [],
+        }
+
     def enroll(self, user_id: str, enrollment: Dict) -> Dict:
         user = self.get_user(user_id)
         if not user:
@@ -57,28 +75,68 @@ class InMemoryUserStore:
         enrollment["created_at"] = datetime.utcnow().isoformat()
         user.enrollments.append(enrollment)
         if enrollment.get("module_id"):
-            user.progress.setdefault(enrollment["module_id"], {
-                "completed_lessons": 0,
-                "completed_concepts": 0,
-                "time_spent_minutes": 0,
-                "last_activity": datetime.utcnow().isoformat(),
-            })
+            user.progress.setdefault(
+                enrollment["module_id"],
+                {
+                    "completed_lessons": 0,
+                    "completed_concepts": 0,
+                    "time_spent_minutes": 0,
+                    "last_activity": datetime.utcnow().isoformat(),
+                },
+            )
         return enrollment
+
+    def list_enrollments(self, user_id: str) -> List[Dict]:
+        user = self.get_user(user_id)
+        if not user:
+            raise ValueError("User not found")
+        return user.enrollments
 
     def track_activity(self, user_id: str, module_id: str, lessons: int, concepts: int, minutes: int) -> Dict:
         user = self.get_user(user_id)
         if not user:
             raise ValueError("User not found")
-        bucket = user.progress.setdefault(module_id, {
-            "completed_lessons": 0,
-            "completed_concepts": 0,
-            "time_spent_minutes": 0,
-        })
+        bucket = user.progress.setdefault(
+            module_id,
+            {
+                "completed_lessons": 0,
+                "completed_concepts": 0,
+                "time_spent_minutes": 0,
+            },
+        )
         bucket["completed_lessons"] += max(0, lessons)
         bucket["completed_concepts"] += max(0, concepts)
         bucket["time_spent_minutes"] += max(0, minutes)
         bucket["last_activity"] = datetime.utcnow().isoformat()
         return bucket
+
+    def save_exercise_submission(self, user_id: str, exercise_id: str, score: int, feedback: str) -> Dict:
+        user = self.get_user(user_id)
+        if not user:
+            raise ValueError("User not found")
+        submission = {
+            "id": str(uuid4()),
+            "exercise_id": exercise_id,
+            "score": score,
+            "feedback": feedback,
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        user.exercise_submissions.append(submission)
+        return submission
+
+    def save_quiz_submission(self, user_id: str, quiz_id: str, score: int, total: int) -> Dict:
+        user = self.get_user(user_id)
+        if not user:
+            raise ValueError("User not found")
+        submission = {
+            "id": str(uuid4()),
+            "quiz_id": quiz_id,
+            "score": score,
+            "total": total,
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        user.quiz_submissions.append(submission)
+        return submission
 
 
 user_store = InMemoryUserStore()
