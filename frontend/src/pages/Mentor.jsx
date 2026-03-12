@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { askMentor } from '../services/api'
 
-export default function Mentor() {
+export default function Mentor({ user }) {
   const [question, setQuestion] = useState('Explain backpropagation in simple terms')
   const [answer, setAnswer] = useState('')
   const [sources, setSources] = useState([])
 
   const onAsk = async () => {
-    const data = await askMentor({ user_id: 'demo-user', learning_path_id: 'demo-path', question })
+    const data = await askMentor({ user_id: user.user_id, learning_path_id: 'active-path', question })
     setAnswer(data.answer)
     setSources(data.sources || [])
   }

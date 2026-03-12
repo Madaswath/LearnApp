@@ -1,4 +1,3 @@
-from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,8 +12,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
-
-class HealthResponse(BaseModel):
-    status: str
-    app: str

@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useMemo, useState } from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import './index.css'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
@@ -15,23 +15,45 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 
 function App() {
+  const [user, setUser] = useState(() => {
+    const raw = localStorage.getItem('lumina_user')
+    return raw ? JSON.parse(raw) : null
+  })
+
+  const auth = useMemo(
+    () => ({
+      user,
+      setUser: (next) => {
+        setUser(next)
+        if (next) localStorage.setItem('lumina_user', JSON.stringify(next))
+        else localStorage.removeItem('lumina_user')
+      },
+    }),
+    [user],
+  )
+
+  const protectedPage = (Component) =>
+    auth.user ? (
+      <Layout user={auth.user} onLogout={() => auth.setUser(null)}>
+        <Component user={auth.user} />
+      </Layout>
+    ) : (
+      <Navigate to="/login" replace />
+    )
+
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/*" element={<Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/courses" element={<Courses />} />
-            <Route path="/exercises" element={<Exercises />} />
-            <Route path="/quizzes" element={<Quizzes />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/mentor" element={<Mentor />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/profile" element={<Profile />} />
-          </Routes>
-        </Layout>} />
+        <Route path="/login" element={<Login auth={auth} />} />
+        <Route path="/register" element={<Register auth={auth} />} />
+        <Route path="/" element={protectedPage(Dashboard)} />
+        <Route path="/courses" element={protectedPage(Courses)} />
+        <Route path="/exercises" element={protectedPage(Exercises)} />
+        <Route path="/quizzes" element={protectedPage(Quizzes)} />
+        <Route path="/projects" element={protectedPage(Projects)} />
+        <Route path="/mentor" element={protectedPage(Mentor)} />
+        <Route path="/analytics" element={protectedPage(Analytics)} />
+        <Route path="/profile" element={protectedPage(Profile)} />
       </Routes>
     </BrowserRouter>
   )

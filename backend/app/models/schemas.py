@@ -1,13 +1,95 @@
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from typing import Dict, List, Optional
+from pydantic import BaseModel, Field, EmailStr
 
 
 class UserProfile(BaseModel):
     user_id: str
+    full_name: Optional[str] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
     learning_style: Optional[str] = None
     pace: Optional[str] = None
     goals: List[str] = Field(default_factory=list)
+
+
+class SignupRequest(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class AuthResponse(BaseModel):
+    user_id: str
+    name: str
+    email: EmailStr
+
+
+class TopicSearchRequest(BaseModel):
+    topic: str
+
+
+class LessonPlan(BaseModel):
+    lesson_title: str
+    concepts: List[str]
+
+
+class TopicModule(BaseModel):
+    module_id: str
+    title: str
+    difficulty: str
+    estimated_hours: int
+    lessons: List[LessonPlan]
+    projects: List[str]
+
+
+class TopicSearchResponse(BaseModel):
+    topic: str
+    modules: List[TopicModule]
+
+
+class EnrollRequest(BaseModel):
+    user_id: str
+    topic: str
+    module_id: str
+    module_title: str
+    difficulty: str
+
+
+class EnrollResponse(BaseModel):
+    id: str
+    user_id: str
+    topic: str
+    module_id: str
+    module_title: str
+    difficulty: str
+    created_at: str
+
+
+class ActivityTrackRequest(BaseModel):
+    user_id: str
+    module_id: str
+    lessons_completed: int = 0
+    concepts_completed: int = 0
+    minutes_spent: int = 0
+
+
+class ProgressSnapshot(BaseModel):
+    module_id: str
+    completed_lessons: int
+    completed_concepts: int
+    time_spent_minutes: int
+    last_activity: Optional[str] = None
+
+
+class UserProgressResponse(BaseModel):
+    user_id: str
+    progress: List[ProgressSnapshot]
 
 
 class LearningPathRequest(BaseModel):
@@ -49,3 +131,8 @@ class ProgressEvent(BaseModel):
     score: Optional[float] = None
     completed: bool = False
     timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class HealthResponse(BaseModel):
+    status: str
+    app: str
