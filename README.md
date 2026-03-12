@@ -81,6 +81,47 @@ Copy `.env.example` to `.env`:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 
+
+## Run in VS Code (Clone → Run)
+
+1. Clone and open the project:
+
+```bash
+git clone <your-repo-url> LuminaAI
+cd LuminaAI
+code .
+```
+
+2. Create local environment file from template:
+
+```bash
+cp .env.example .env
+```
+
+Then set `OPENAI_API_KEY`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY`.
+
+3. Install dependencies once:
+
+```bash
+python -m venv .venv
+. .venv/bin/activate
+pip install -r backend/requirements.txt
+cd frontend && npm install
+```
+
+4. In VS Code run one of these:
+
+- **Terminal → Run Task → `app: run full stack`** (runs backend + frontend)
+- **Run and Debug → `Backend: FastAPI (uvicorn)`** (backend debugger)
+- **Terminal → Run Task → `docker: up`** (containerized run)
+
+5. Open:
+
+- Frontend: `http://localhost:5173`
+- Backend docs: `http://localhost:8000/docs`
+
+> VS Code workspace files are included in `.vscode/` with recommended extensions, tasks, and launch settings.
+
 ## Docker
 
 ```bash
