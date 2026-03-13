@@ -4,7 +4,14 @@ from typing import Dict
 
 class PromptLibrary:
     def __init__(self, root: str = "backend/prompts") -> None:
-        self.root = Path(root)
+        candidate_roots = [
+            Path(root),
+            Path("prompts"),
+            Path(__file__).resolve().parents[2] / "prompts",
+            Path(__file__).resolve().parents[3] / "backend" / "prompts",
+        ]
+
+        self.root = next((p for p in candidate_roots if p.exists()), candidate_roots[0])
 
     def names(self) -> list[str]:
         if not self.root.exists():
