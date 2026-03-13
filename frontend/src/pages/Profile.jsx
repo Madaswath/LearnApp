@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { getProfile, saveProfile } from '../services/api'
 
 export default function Profile({ user }) {
-  const navigate = useNavigate()
   const [form, setForm] = useState({
     user_id: user.user_id,
     full_name: user.name || '',
@@ -58,11 +56,6 @@ export default function Profile({ user }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm">
-        <button onClick={() => navigate(-1)} className="px-3 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50">← Previous</button>
-        <Link to="/dashboard" className="px-3 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50">🏠 Home</Link>
-      </div>
-
       <form onSubmit={submit} className="card max-w-3xl space-y-4">
         <h2 className="text-2xl font-semibold">Profile & Security Settings</h2>
 

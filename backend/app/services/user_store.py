@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from uuid import uuid4
 
@@ -19,6 +19,8 @@ class UserRecord:
     module_instances: Dict[str, Dict] = field(default_factory=dict)
     exercise_submissions: List[Dict] = field(default_factory=list)
     quiz_submissions: List[Dict] = field(default_factory=list)
+    streak_days: int = 0
+    last_login_date: Optional[str] = None
 
 
 class InMemoryUserStore:
@@ -38,6 +40,7 @@ class InMemoryUserStore:
         user = self.users_by_email.get(email)
         if not user or user.password != password:
             raise ValueError("Invalid credentials")
+        self._update_login_streak(user)
         return user
 
     def get_user(self, user_id: str) -> Optional[UserRecord]:
@@ -179,12 +182,13 @@ class InMemoryUserStore:
         }
 
     def track_activity(self, user_id: str, module_id: str, lessons: int, concepts: int, minutes: int) -> Dict:
+        user = self._require_user(user_id)
         bucket = self._progress_bucket(user_id, module_id)
         bucket["completed_lessons"] += max(0, lessons)
         bucket["completed_concepts"] += max(0, concepts)
         bucket["time_spent_minutes"] += max(0, minutes)
         bucket["last_activity"] = datetime.utcnow().isoformat()
-        bucket["streak_days"] = bucket.get("streak_days", 0) + 1
+        bucket["streak_days"] = user.streak_days
         return bucket
 
     def save_exercise_submission(self, user_id: str, exercise_id: str, score: int, feedback: str) -> Dict:
@@ -210,6 +214,23 @@ class InMemoryUserStore:
         }
         user.quiz_submissions.append(submission)
         return submission
+
+
+    def _update_login_streak(self, user: UserRecord) -> None:
+        today = datetime.utcnow().date()
+        if not user.last_login_date:
+            user.streak_days = 1
+            user.last_login_date = today.isoformat()
+            return
+
+        previous_login = datetime.fromisoformat(user.last_login_date).date()
+        if previous_login == today:
+            return
+        if previous_login == today - timedelta(days=1):
+            user.streak_days += 1
+        else:
+            user.streak_days = 1
+        user.last_login_date = today.isoformat()
 
     def _require_user(self, user_id: str) -> UserRecord:
         user = self.get_user(user_id)

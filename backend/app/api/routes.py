@@ -85,7 +85,7 @@ def signup(payload: SignupRequest) -> AuthResponse:
         repo.create_or_update_user(user.id, user.name, user.email, payload.password)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return AuthResponse(user_id=user.id, name=user.name, email=user.email)
+    return AuthResponse(user_id=user.id, name=user.name, email=user.email, streak_days=user.streak_days)
 
 
 @router.post("/auth/login", response_model=AuthResponse)
@@ -94,7 +94,7 @@ def login(payload: LoginRequest) -> AuthResponse:
         user = user_store.login(payload.email, payload.password)
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
-    return AuthResponse(user_id=user.id, name=user.name, email=user.email)
+    return AuthResponse(user_id=user.id, name=user.name, email=user.email, streak_days=user.streak_days)
 
 
 @router.get("/knowledge/topics")

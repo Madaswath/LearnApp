@@ -14,7 +14,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       <div className="p-4 border-b border-slate-200 flex items-center justify-between">
         {!collapsed && (
           <div>
-            <h1 className="text-lg font-bold tracking-wide text-indigo-700">Lumina AI</h1>
+            <h1 className="text-lg font-bold tracking-wide text-indigo-700">LearnApp</h1>
             <p className="text-xs text-slate-500">Learning workspace</p>
           </div>
         )}
