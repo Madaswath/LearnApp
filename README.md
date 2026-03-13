@@ -204,3 +204,5 @@ Expected flow for live demo:
 5. Mark chapter complete
 6. Review module evaluation and next steps
 7. Ask AI mentor concept/app-navigation questions
+
+Detailed execution tracker: see `docs/implementation-roadmap.md` for phase-by-phase status and next actions.
