@@ -87,6 +87,7 @@ Key endpoints:
 - `GET /knowledge/topics`
 - `GET /knowledge/{topic}?q=...`
 - `POST /prompts/{prompt_name}`
+- `GET /demo/readiness`
 
 
 ## Knowledge Base & Prompt Library
@@ -115,7 +116,7 @@ App URL: `http://localhost:5173`
 
 ## Database + RLS
 
-Apply `backend/migrations/001_init.sql` to Supabase SQL editor.
+Apply `backend/migrations/001_init.sql` and `backend/migrations/002_app_alignment.sql` to Supabase SQL editor.
 
 Includes required tables:
 
@@ -189,3 +190,17 @@ docker compose up --build
 - Add JWT verification middleware wired to Supabase Auth JWKS.
 - Add background workers for analytics and recommendation updates.
 - Add CI/CD pipeline with unit/integration/e2e tests.
+
+
+## Demo Readiness
+
+Use `GET /api/v1/demo/readiness` to quickly inspect investor-demo alignment checks and required actions.
+
+Expected flow for live demo:
+1. Signup/Login
+2. Search topic and enroll module
+3. Start learning from enrollments
+4. Complete lesson + chapter-end exercise + chapter-end quiz
+5. Mark chapter complete
+6. Review module evaluation and next steps
+7. Ask AI mentor concept/app-navigation questions

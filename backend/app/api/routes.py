@@ -40,6 +40,7 @@ from app.services.curriculum_builder import CurriculumBuilder
 from app.services.knowledge_base import KnowledgeBase
 from app.services.prompt_library import PromptLibrary
 from app.services.rag_engine import RAGEngine
+from app.services.supabase_repository import SupabaseRepository
 from app.services.supabase_tracker import SupabaseTracker
 from app.services.user_store import user_store
 
@@ -51,6 +52,7 @@ curriculum_builder = CurriculumBuilder()
 kb = KnowledgeBase()
 prompts = PromptLibrary()
 tracker = SupabaseTracker()
+repo = SupabaseRepository()
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -62,6 +64,7 @@ def health() -> HealthResponse:
 def signup(payload: SignupRequest) -> AuthResponse:
     try:
         user = user_store.signup(payload.name, payload.email, payload.password)
+        repo.create_or_update_user(user.id, user.name, user.email, payload.password)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return AuthResponse(user_id=user.id, name=user.name, email=user.email)
@@ -124,6 +127,7 @@ def search_topic(payload: TopicSearchRequest) -> TopicSearchResponse:
 def enroll(payload: EnrollRequest) -> EnrollResponse:
     try:
         rec = user_store.enroll(payload.user_id, payload.model_dump())
+        repo.save_enrollment(rec)
         tracker.record_enrollment(payload.user_id, payload.module_id, payload.topic, payload.difficulty)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -144,6 +148,7 @@ def build_module(payload: ModuleBuildRequest) -> ModuleContentResponse:
     module_data = curriculum_builder.build_module_content(payload.topic, payload.difficulty, payload.module_id)
     try:
         stored = user_store.set_module_instance(payload.user_id, payload.module_id, module_data)
+        repo.save_module_instance(payload.user_id, payload.module_id, stored)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return ModuleContentResponse(**stored)
@@ -163,6 +168,7 @@ def complete_lesson(payload: LessonCompleteRequest) -> dict:
     try:
         lesson = user_store.complete_lesson(payload.user_id, payload.module_id, payload.chapter_id, payload.lesson_id)
         progress = user_store._progress_bucket(payload.user_id, payload.module_id)
+        repo.save_module_progress(payload.user_id, payload.module_id, progress)
         tracker.record_progress(payload.user_id, payload.module_id, progress)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -179,7 +185,9 @@ def submit_module_exercise(payload: ModuleExerciseSubmitRequest) -> ExerciseSubm
             payload.exercise_id,
             payload.solution,
         )
+        repo.save_exercise_submission(payload.user_id, payload.module_id, payload.exercise_id, result["score"])
         progress = user_store._progress_bucket(payload.user_id, payload.module_id)
+        repo.save_module_progress(payload.user_id, payload.module_id, progress)
         tracker.record_progress(payload.user_id, payload.module_id, progress)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -191,6 +199,7 @@ def complete_chapter(payload: ChapterCompleteRequest) -> dict:
     try:
         chapter = user_store.complete_chapter(payload.user_id, payload.module_id, payload.chapter_id)
         progress = user_store._progress_bucket(payload.user_id, payload.module_id)
+        repo.save_module_progress(payload.user_id, payload.module_id, progress)
         tracker.record_progress(payload.user_id, payload.module_id, progress)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -207,6 +216,7 @@ def submit_module_quiz(payload: ModuleQuizSubmitRequest) -> QuizSubmitResponse:
             payload.quiz_id,
             payload.answer,
         )
+        repo.save_quiz_submission(payload.user_id, payload.module_id, payload.quiz_id, result["score"], result["total"])
         tracker.record_quiz_performance(payload.user_id, payload.quiz_id, result["score"], result["total"])
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -277,6 +287,7 @@ def submit_quiz(payload: QuizSubmitRequest) -> QuizSubmitResponse:
     score = sum(1 for q in quiz["questions"] if payload.answers.get(q["id"]) == q["answer"])
     try:
         user_store.save_quiz_submission(payload.user_id, payload.quiz_id, score, total)
+        repo.save_quiz_submission(payload.user_id, "global", payload.quiz_id, score, total)
         tracker.record_quiz_performance(payload.user_id, payload.quiz_id, score, total)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -286,6 +297,23 @@ def submit_quiz(payload: QuizSubmitRequest) -> QuizSubmitResponse:
 @router.get("/projects", response_model=list[ProjectItem])
 def projects() -> list[ProjectItem]:
     return [ProjectItem(**item) for item in list_projects()]
+
+
+
+@router.get("/demo/readiness")
+def demo_readiness() -> dict:
+    checks = {
+        "knowledge_topics": len(kb.list_topics()),
+        "prompt_templates": len(prompts.names()),
+        "supabase_tracker_enabled": tracker.enabled,
+        "supabase_repo_enabled": repo.enabled,
+    }
+    actions = []
+    if not repo.enabled:
+        actions.append("Set SUPABASE_URL and SUPABASE_ANON_KEY to enable persistent multi-user demo data.")
+    actions.append("Apply backend/migrations/001_init.sql and backend/migrations/002_app_alignment.sql in Supabase SQL editor.")
+    actions.append("Use /docs to validate signup -> enroll -> start module -> lesson/exercise/quiz/chapter completion -> evaluation flow.")
+    return {"checks": checks, "actions": actions}
 
 
 @router.get("/agents")
@@ -310,4 +338,5 @@ def mentor_chat(payload: MentorMessageRequest) -> MentorMessageResponse:
     if user:
         progress = user.progress.get(payload.learning_path_id) or {}
     response = rag_engine.answer(topic=payload.topic, question=payload.question, user_progress=progress)
+    repo.save_mentor_message(payload.user_id, payload.learning_path_id, payload.question, response["answer"], response["sources"])
     return MentorMessageResponse(answer=response["answer"], sources=response["sources"])
