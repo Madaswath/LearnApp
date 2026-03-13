@@ -1,11 +1,8 @@
 import { Link, useLocation } from 'react-router-dom'
 
 const items = [
-  ['Dashboard', '/'],
+  ['Dashboard', '/dashboard'],
   ['Topics & Modules', '/courses'],
-  ['Exercises', '/exercises'],
-  ['Quizzes', '/quizzes'],
-  ['Projects', '/projects'],
   ['AI Mentor', '/mentor'],
   ['Analytics', '/analytics'],
   ['Settings', '/profile'],

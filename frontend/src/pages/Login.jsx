@@ -13,7 +13,7 @@ export default function Login({ auth }) {
     try {
       const user = await login(form)
       auth.setUser(user)
-      navigate('/')
+      navigate('/dashboard')
     } catch (err) {
       setError(err?.response?.data?.detail || 'Login failed')
     }

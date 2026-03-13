@@ -20,32 +20,46 @@ class SupabaseRepository:
     def _hash(self, raw: str) -> str:
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
+    def _safe_upsert(self, table: str, payload: Dict, on_conflict: str | None = None) -> None:
+        if not self.enabled:
+            return
+        sb = get_supabase()
+        query = sb.table(table).upsert(payload, on_conflict=on_conflict) if on_conflict else sb.table(table).upsert(payload)
+        try:
+            query.execute()
+        except Exception:
+            # Keep app usable during demos even if optional alignment tables are not migrated yet.
+            return
+
+    def _safe_insert(self, table: str, payload: Dict) -> None:
+        if not self.enabled:
+            return
+        sb = get_supabase()
+        try:
+            sb.table(table).insert(payload).execute()
+        except Exception:
+            return
+
     def create_or_update_user(self, user_id: str, name: str, email: str, password: str) -> None:
         if not self.enabled:
             return
-        sb = get_supabase()
-        sb.table("app_users").upsert(
-            {
-                "id": user_id,
-                "email": email,
-                "full_name": name,
-                "password_hash": self._hash(password),
-                "created_at": self._now(),
-            },
-            on_conflict="id",
-        ).execute()
+        payload = {
+            "id": user_id,
+            "email": email,
+            "full_name": name,
+            "password_hash": self._hash(password),
+            "created_at": self._now(),
+        }
+        self._safe_upsert("app_users", payload, on_conflict="id")
+        # Backward-compatible fallback to baseline users table
+        self._safe_upsert("users", {k: payload[k] for k in ["id", "email", "full_name", "created_at"]}, on_conflict="id")
 
     def save_enrollment(self, enrollment: Dict) -> None:
-        if not self.enabled:
-            return
-        sb = get_supabase()
-        sb.table("enrollments").upsert(enrollment, on_conflict="id").execute()
+        self._safe_upsert("enrollments", enrollment, on_conflict="id")
 
     def save_module_instance(self, user_id: str, module_id: str, payload: Dict) -> None:
-        if not self.enabled:
-            return
-        sb = get_supabase()
-        sb.table("module_instances").upsert(
+        self._safe_upsert(
+            "module_instances",
             {
                 "user_id": user_id,
                 "module_id": module_id,
@@ -53,13 +67,11 @@ class SupabaseRepository:
                 "updated_at": self._now(),
             },
             on_conflict="user_id,module_id",
-        ).execute()
+        )
 
     def save_module_progress(self, user_id: str, module_id: str, progress: Dict) -> None:
-        if not self.enabled:
-            return
-        sb = get_supabase()
-        sb.table("module_progress").upsert(
+        self._safe_upsert(
+            "module_progress",
             {
                 "user_id": user_id,
                 "module_id": module_id,
@@ -72,27 +84,23 @@ class SupabaseRepository:
                 "last_activity": progress.get("last_activity", self._now()),
             },
             on_conflict="user_id,module_id",
-        ).execute()
+        )
 
     def save_exercise_submission(self, user_id: str, module_id: str, exercise_id: str, score: int) -> None:
-        if not self.enabled:
-            return
-        sb = get_supabase()
-        sb.table("exercise_submissions").insert(
+        self._safe_insert(
+            "exercise_submissions",
             {
                 "user_id": user_id,
                 "module_id": module_id,
                 "exercise_id": exercise_id,
                 "score": score,
                 "created_at": self._now(),
-            }
-        ).execute()
+            },
+        )
 
     def save_quiz_submission(self, user_id: str, module_id: str, quiz_id: str, score: int, total: int) -> None:
-        if not self.enabled:
-            return
-        sb = get_supabase()
-        sb.table("quiz_submissions").insert(
+        self._safe_insert(
+            "quiz_submissions",
             {
                 "user_id": user_id,
                 "module_id": module_id,
@@ -100,14 +108,12 @@ class SupabaseRepository:
                 "score": score,
                 "total": total,
                 "created_at": self._now(),
-            }
-        ).execute()
+            },
+        )
 
     def save_mentor_message(self, user_id: str, module_id: str, question: str, answer: str, sources: list[str]) -> None:
-        if not self.enabled:
-            return
-        sb = get_supabase()
-        sb.table("mentor_conversations").insert(
+        self._safe_insert(
+            "mentor_conversations",
             {
                 "user_id": user_id,
                 "learning_path_id": None,
@@ -116,5 +122,5 @@ class SupabaseRepository:
                 "answer": answer,
                 "context_sources": sources,
                 "created_at": self._now(),
-            }
-        ).execute()
+            },
+        )

@@ -5,9 +5,6 @@ import './index.css'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Courses from './pages/Courses'
-import Exercises from './pages/Exercises'
-import Quizzes from './pages/Quizzes'
-import Projects from './pages/Projects'
 import Mentor from './pages/Mentor'
 import Analytics from './pages/Analytics'
 import Profile from './pages/Profile'
@@ -44,13 +41,11 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login auth={auth} />} />
         <Route path="/register" element={<Register auth={auth} />} />
-        <Route path="/" element={protectedPage(Dashboard)} />
+        <Route path="/dashboard" element={protectedPage(Dashboard)} />
         <Route path="/courses" element={protectedPage(Courses)} />
-        <Route path="/exercises" element={protectedPage(Exercises)} />
-        <Route path="/quizzes" element={protectedPage(Quizzes)} />
-        <Route path="/projects" element={protectedPage(Projects)} />
         <Route path="/mentor" element={protectedPage(Mentor)} />
         <Route path="/analytics" element={protectedPage(Analytics)} />
         <Route path="/profile" element={protectedPage(Profile)} />

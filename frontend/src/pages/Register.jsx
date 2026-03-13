@@ -13,7 +13,7 @@ export default function Register({ auth }) {
     try {
       const user = await signup(form)
       auth.setUser(user)
-      navigate('/')
+      navigate('/dashboard')
     } catch (err) {
       setError(err?.response?.data?.detail || 'Registration failed')
     }
