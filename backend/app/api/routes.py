@@ -1,3 +1,5 @@
+import re
+
 from fastapi import APIRouter, HTTPException
 from app.core.config import settings
 from app.models.schemas import (
@@ -55,6 +57,15 @@ tracker = SupabaseTracker()
 repo = SupabaseRepository()
 
 
+def _is_strong_password(password: str) -> bool:
+    return (
+        len(password) >= 8
+        and bool(re.search(r"[A-Z]", password))
+        and bool(re.search(r"[a-z]", password))
+        and bool(re.search(r"\d", password))
+        and bool(re.search(r"[^A-Za-z0-9]", password))
+    )
+
 @router.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse(status="ok", app=settings.app_name)
@@ -62,6 +73,13 @@ def health() -> HealthResponse:
 
 @router.post("/auth/signup", response_model=AuthResponse)
 def signup(payload: SignupRequest) -> AuthResponse:
+    if payload.password != payload.confirm_password:
+        raise HTTPException(status_code=400, detail="Password and re-entered password do not match")
+    if not _is_strong_password(payload.password):
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 8 chars and include uppercase, lowercase, number, and special character",
+        )
     try:
         user = user_store.signup(payload.name, payload.email, payload.password)
         repo.create_or_update_user(user.id, user.name, user.email, payload.password)

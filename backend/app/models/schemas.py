@@ -11,12 +11,17 @@ class UserProfile(BaseModel):
     learning_style: Optional[str] = None
     pace: Optional[str] = None
     goals: List[str] = Field(default_factory=list)
+    email: Optional[EmailStr] = None
+    email_verified: bool = False
+    phone: Optional[str] = None
+    phone_verified: bool = False
 
 
 class SignupRequest(BaseModel):
     name: str
     email: EmailStr
     password: str
+    confirm_password: str
 
 
 class LoginRequest(BaseModel):

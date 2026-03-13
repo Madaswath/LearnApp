@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { fetchProgress, fetchEnrollments } from '../services/api'
 
-const quickTabs = [
-  { title: 'Topics & Modules', desc: 'Search, enroll, and start learning flow', path: '/courses' },
-  { title: 'AI Mentor', desc: 'Get concept help and app-navigation support', path: '/mentor' },
-  { title: 'Analytics', desc: 'Track progress, streak, and performance trends', path: '/analytics' },
-  { title: 'Settings', desc: 'Update profile and learning preferences', path: '/profile' },
+const quickActions = [
+  { title: 'Discover Topics', desc: 'Search tools/topics and generate modules by level.', to: '/courses', tone: 'from-indigo-500/30 to-violet-500/20' },
+  { title: 'Learning Analytics', desc: 'Review streaks, completion trends, and outcomes.', to: '/analytics', tone: 'from-cyan-500/30 to-sky-500/20' },
+  { title: 'Profile & Security', desc: 'Manage personal settings and optional verifications.', to: '/profile', tone: 'from-emerald-500/30 to-teal-500/20' },
 ]
 
 export default function Dashboard({ user }) {
@@ -27,45 +27,45 @@ export default function Dashboard({ user }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold mb-1">Welcome, {user.name}</h2>
-        <p className="text-slate-400">Investor demo dashboard for personalized module learning and AI mentorship.</p>
-      </div>
+      <section className="rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-600/20 via-violet-600/10 to-slate-900 p-6">
+        <h1 className="text-3xl font-bold">Welcome back, {user.name}</h1>
+        <p className="text-slate-300 mt-2">Your AI learning cockpit is ready. Continue enrolled modules or discover a new topic today.</p>
+      </section>
 
-      <div className="grid md:grid-cols-4 gap-4">
-        <div className="card"><p className="text-slate-400 text-sm">Enrolled Modules</p><p className="text-3xl font-bold">{enrollments.length}</p></div>
-        <div className="card"><p className="text-slate-400 text-sm">Lessons Completed</p><p className="text-3xl font-bold">{metrics.lessons}</p></div>
-        <div className="card"><p className="text-slate-400 text-sm">Chapters Completed</p><p className="text-3xl font-bold">{metrics.chapters}</p></div>
-        <div className="card"><p className="text-slate-400 text-sm">Best Streak (days)</p><p className="text-3xl font-bold">{metrics.streak}</p></div>
-      </div>
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="card"><p className="text-sm text-slate-400">Enrolled Modules</p><p className="text-3xl font-bold">{enrollments.length}</p></div>
+        <div className="card"><p className="text-sm text-slate-400">Lessons Completed</p><p className="text-3xl font-bold">{metrics.lessons}</p></div>
+        <div className="card"><p className="text-sm text-slate-400">Chapters Completed</p><p className="text-3xl font-bold">{metrics.chapters}</p></div>
+        <div className="card"><p className="text-sm text-slate-400">Best Streak</p><p className="text-3xl font-bold">{metrics.streak}d</p></div>
+      </section>
 
-      <div>
+      <section>
         <h3 className="text-xl font-semibold mb-3">Quick Access</h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          {quickTabs.map((tab) => (
-            <a key={tab.title} href={tab.path} className="card hover:border-indigo-500 transition-colors">
-              <p className="text-lg font-semibold">{tab.title}</p>
-              <p className="text-slate-400 text-sm">{tab.desc}</p>
-            </a>
+        <div className="grid md:grid-cols-3 gap-4">
+          {quickActions.map((item) => (
+            <Link key={item.title} to={item.to} className={`card bg-gradient-to-br ${item.tone} hover:scale-[1.01] transition-transform`}>
+              <p className="font-semibold text-lg">{item.title}</p>
+              <p className="text-sm text-slate-300 mt-1">{item.desc}</p>
+            </Link>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div className="card">
-        <h3 className="text-lg font-semibold mb-2">Performance Snapshot</h3>
+      <section className="card">
+        <h3 className="text-lg font-semibold mb-2">Active Module Performance</h3>
         {progress.length === 0 ? (
-          <p className="text-slate-400">No activity yet. Start from Topics & Modules and complete chapter-end tasks.</p>
+          <p className="text-slate-400">No progress yet. Start in Discover Topics to enroll and generate your module roadmap.</p>
         ) : (
           <div className="space-y-2">
             {progress.map((item) => (
-              <div key={item.module_id} className="border border-slate-800 rounded p-2 text-sm">
-                <p className="text-slate-300">Module: {item.module_id}</p>
-                <p>Lessons {item.completed_lessons} • Chapters {item.completed_chapters} • Quizzes {item.quizzes_passed} • Streak {item.streak_days || 0}</p>
+              <div key={item.module_id} className="rounded-lg border border-slate-700/70 p-3 bg-slate-900/60">
+                <p className="text-sm text-slate-300">{item.module_id}</p>
+                <p className="text-sm text-slate-400">Lessons {item.completed_lessons} • Chapters {item.completed_chapters} • Quizzes {item.quizzes_passed} • Streak {item.streak_days || 0}</p>
               </div>
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }

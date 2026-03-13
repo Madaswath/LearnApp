@@ -60,6 +60,10 @@ class InMemoryUserStore:
             "learning_style": "",
             "pace": "",
             "goals": [],
+            "email": user.email,
+            "email_verified": False,
+            "phone": "",
+            "phone_verified": False,
         }
 
     def enroll(self, user_id: str, enrollment: Dict) -> Dict:
