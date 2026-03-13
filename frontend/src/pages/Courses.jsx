@@ -5,8 +5,10 @@ import {
   completeLesson,
   enrollModule,
   fetchEnrollments,
+  fetchModuleEvaluation,
   getModule,
   searchTopicModules,
+  submitModuleExercise,
   submitModuleQuiz,
 } from '../services/api'
 
@@ -16,6 +18,8 @@ export default function Courses({ user }) {
   const [message, setMessage] = useState('')
   const [enrollments, setEnrollments] = useState([])
   const [activeModule, setActiveModule] = useState(null)
+  const [evaluation, setEvaluation] = useState(null)
+  const [exerciseInput, setExerciseInput] = useState({})
 
   const refreshEnrollments = () => {
     fetchEnrollments(user.user_id)
@@ -45,10 +49,12 @@ export default function Courses({ user }) {
     refreshEnrollments()
   }
 
-  const onOpenModule = async (module) => {
+  const openOrBuildModule = async (moduleId, selectedTopic, difficulty) => {
     try {
-      const existing = await getModule(user.user_id, module.module_id)
+      const existing = await getModule(user.user_id, moduleId)
       setActiveModule(existing)
+      const ev = await fetchModuleEvaluation(user.user_id, moduleId)
+      setEvaluation(ev)
       return
     } catch {
       // build if missing
@@ -56,17 +62,29 @@ export default function Courses({ user }) {
 
     const built = await buildModule({
       user_id: user.user_id,
-      module_id: module.module_id,
-      topic,
-      difficulty: module.difficulty,
+      module_id: moduleId,
+      topic: selectedTopic,
+      difficulty,
     })
     setActiveModule(built)
+    const ev = await fetchModuleEvaluation(user.user_id, moduleId)
+    setEvaluation(ev)
+  }
+
+  const onOpenModule = async (module) => {
+    await openOrBuildModule(module.module_id, topic, module.difficulty)
+  }
+
+  const onStartFromEnrollment = async (enrollment) => {
+    await openOrBuildModule(enrollment.module_id, enrollment.topic, enrollment.difficulty)
   }
 
   const refreshModule = async () => {
     if (!activeModule) return
     const next = await getModule(user.user_id, activeModule.module_id)
     setActiveModule(next)
+    const ev = await fetchModuleEvaluation(user.user_id, activeModule.module_id)
+    setEvaluation(ev)
   }
 
   const markLessonDone = async (chapterId, lessonId) => {
@@ -75,10 +93,28 @@ export default function Courses({ user }) {
     setMessage('Lesson marked complete.')
   }
 
-  const markChapterDone = async (chapterId) => {
-    await completeChapter({ user_id: user.user_id, module_id: activeModule.module_id, chapter_id: chapterId })
+  const submitExerciseAtChapterEnd = async (chapterId, exerciseId) => {
+    const key = `${chapterId}:${exerciseId}`
+    const solution = exerciseInput[key] || ''
+    const res = await submitModuleExercise({
+      user_id: user.user_id,
+      module_id: activeModule.module_id,
+      chapter_id: chapterId,
+      exercise_id: exerciseId,
+      solution,
+    })
     await refreshModule()
-    setMessage('Chapter marked complete.')
+    setMessage(`Exercise submitted. Score: ${res.score}`)
+  }
+
+  const markChapterDone = async (chapterId) => {
+    try {
+      await completeChapter({ user_id: user.user_id, module_id: activeModule.module_id, chapter_id: chapterId })
+      await refreshModule()
+      setMessage('Chapter marked complete.')
+    } catch (err) {
+      setMessage(err?.response?.data?.detail || 'Please complete all chapter tasks first.')
+    }
   }
 
   const submitQuiz = async (chapterId, quizId, answer) => {
@@ -107,8 +143,15 @@ export default function Courses({ user }) {
         {enrollments.length === 0 ? (
           <p className="text-slate-400 text-sm">No enrollments yet.</p>
         ) : (
-          <ul className="list-disc pl-6 text-slate-300 text-sm">
-            {enrollments.map((en) => <li key={en.id}>{en.module_title} ({en.difficulty})</li>)}
+          <ul className="list-disc pl-6 text-slate-300 text-sm space-y-1">
+            {enrollments.map((en) => (
+              <li key={en.id} className="flex items-center justify-between gap-2">
+                <span>{en.module_title} ({en.difficulty})</span>
+                <button className="bg-violet-600 px-2 py-1 rounded text-xs" onClick={() => onStartFromEnrollment(en)}>
+                  Start Learning
+                </button>
+              </li>
+            ))}
           </ul>
         )}
       </div>
@@ -127,16 +170,6 @@ export default function Courses({ user }) {
                   <button onClick={() => onOpenModule(module)} className="bg-violet-600 px-3 py-2 rounded">Open Module</button>
                 </div>
               </div>
-              <div className="grid md:grid-cols-3 gap-3">
-                {module.lessons.map((lesson) => (
-                  <div key={lesson.lesson_title} className="bg-slate-800 rounded p-3">
-                    <p className="font-medium">{lesson.lesson_title}</p>
-                    <ul className="list-disc pl-5 text-sm text-slate-300">
-                      {lesson.concepts.map((concept) => <li key={concept}>{concept}</li>)}
-                    </ul>
-                  </div>
-                ))}
-              </div>
             </div>
           ))}
         </div>
@@ -145,6 +178,16 @@ export default function Courses({ user }) {
       {activeModule && (
         <div className="card space-y-4">
           <h3 className="text-xl font-semibold">Active Module: {activeModule.title}</h3>
+          {evaluation && (
+            <div className="bg-slate-900 border border-slate-800 rounded p-3">
+              <p className="text-sm">Completion: {(evaluation.completion_ratio * 100).toFixed(0)}%</p>
+              <p className="text-sm text-slate-400">Next Steps:</p>
+              <ul className="list-disc pl-5 text-sm text-slate-300">
+                {evaluation.next_steps.map((step) => <li key={step}>{step}</li>)}
+              </ul>
+            </div>
+          )}
+
           {activeModule.chapters.map((chapter) => (
             <div key={chapter.chapter_id} className="bg-slate-900 border border-slate-800 rounded p-3 space-y-3">
               <div className="flex justify-between items-center">
@@ -170,16 +213,29 @@ export default function Courses({ user }) {
               </div>
 
               <div>
-                <p className="text-sm text-slate-400 mb-1">Exercises</p>
-                {chapter.exercises.map((exercise) => (
-                  <div key={exercise.exercise_id} className="border border-slate-800 rounded p-2 mb-2 text-sm">
-                    {exercise.prompt}
-                  </div>
-                ))}
+                <p className="text-sm text-slate-400 mb-1">Chapter-end Exercise</p>
+                {chapter.exercises.map((exercise) => {
+                  const key = `${chapter.chapter_id}:${exercise.exercise_id}`
+                  return (
+                    <div key={exercise.exercise_id} className="border border-slate-800 rounded p-2 mb-2 text-sm space-y-2">
+                      <p>{exercise.prompt}</p>
+                      <textarea
+                        className="w-full bg-slate-800 rounded p-2"
+                        rows="3"
+                        placeholder="Submit your chapter-end exercise solution"
+                        value={exerciseInput[key] || ''}
+                        onChange={(e) => setExerciseInput({ ...exerciseInput, [key]: e.target.value })}
+                      />
+                      <button className="bg-indigo-600 rounded px-3 py-1 text-xs" onClick={() => submitExerciseAtChapterEnd(chapter.chapter_id, exercise.exercise_id)}>
+                        {exercise.completed ? `Submitted (${exercise.score})` : 'Submit Exercise'}
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
 
               <div>
-                <p className="text-sm text-slate-400 mb-1">Quiz</p>
+                <p className="text-sm text-slate-400 mb-1">Chapter-end Quiz</p>
                 {chapter.quizzes.map((quiz) => (
                   <div key={quiz.quiz_id} className="border border-slate-800 rounded p-2 space-y-2">
                     <p className="text-sm">{quiz.question}</p>
@@ -198,7 +254,7 @@ export default function Courses({ user }) {
           ))}
 
           <div className="bg-slate-900 border border-slate-800 rounded p-3">
-            <h4 className="font-semibold mb-1">Demo Project: {activeModule.project.title}</h4>
+            <h4 className="font-semibold mb-1">End-of-Module Demo Project: {activeModule.project.title}</h4>
             <p className="text-sm text-slate-300 mb-2">{activeModule.project.description}</p>
             <ul className="list-disc pl-5 text-sm text-slate-400">
               {activeModule.project.milestones.map((m) => <li key={m}>{m}</li>)}

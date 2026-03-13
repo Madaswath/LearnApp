@@ -16,6 +16,16 @@ class RAGEngine:
         return self.kb.retrieve(topic=topic, query=question, k=4)
 
     def answer(self, topic: str, question: str, user_progress: Dict | None = None) -> dict:
+        question_l = question.lower()
+        if any(k in question_l for k in ["where", "navigate", "how to use", "which tab", "settings", "enroll", "start module"]):
+            app_help = (
+                "App navigation help: Use 'Topics & Modules' to search and enroll. "
+                "From 'My Enrollments', click 'Start Learning' to open module chapters. "
+                "Complete lessons, submit chapter exercise and quiz, then mark chapter complete. "
+                "Use 'AI Mentor' for doubt support and 'Analytics' to review progress/streak."
+            )
+            return {"answer": app_help, "sources": ["app-navigation-guide"]}
+
         docs = self.retrieve(topic, question)
         progress_hint = ""
         if user_progress:
@@ -30,6 +40,6 @@ class RAGEngine:
         context = " ".join(d["snippet"] for d in docs)
         answer = (
             f"{progress_hint}Based on the {topic} knowledge base: {context[:350]} "
-            "Recommended next step: finish current chapter lesson, then attempt quiz and demo project milestone."
+            "Recommended next step: finish current chapter lesson, submit chapter exercise, then attempt chapter quiz and project milestone."
         )
         return {"answer": answer, "sources": sources}

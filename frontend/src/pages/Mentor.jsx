@@ -3,7 +3,7 @@ import { askMentor } from '../services/api'
 
 export default function Mentor({ user }) {
   const [topic, setTopic] = useState('deep-learning')
-  const [question, setQuestion] = useState('Explain backpropagation in simple terms')
+  const [question, setQuestion] = useState('How do I start learning after enrolling in a module?')
   const [answer, setAnswer] = useState('')
   const [sources, setSources] = useState([])
 
@@ -15,10 +15,10 @@ export default function Mentor({ user }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-semibold">AI Mentor</h2>
+      <h2 className="text-2xl font-semibold">AI Mentor & App Support Assistant</h2>
       <div className="card space-y-2">
         <input className="w-full bg-slate-800 rounded p-3" value={topic} onChange={(e)=>setTopic(e.target.value)} placeholder="Topic slug e.g. deep-learning" />
-        <textarea className="w-full bg-slate-800 rounded p-3" rows="4" value={question} onChange={(e)=>setQuestion(e.target.value)} />
+        <textarea className="w-full bg-slate-800 rounded p-3" rows="4" value={question} onChange={(e)=>setQuestion(e.target.value)} placeholder="Ask concept doubts or app navigation questions" />
         <button onClick={onAsk} className="bg-emerald-600 px-4 py-2 rounded">Ask Mentor</button>
       </div>
       {answer && (

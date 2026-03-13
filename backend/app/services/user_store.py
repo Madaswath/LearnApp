@@ -68,17 +68,7 @@ class InMemoryUserStore:
         enrollment["created_at"] = datetime.utcnow().isoformat()
         user.enrollments.append(enrollment)
         if enrollment.get("module_id"):
-            user.progress.setdefault(
-                enrollment["module_id"],
-                {
-                    "completed_lessons": 0,
-                    "completed_concepts": 0,
-                    "time_spent_minutes": 0,
-                    "completed_chapters": 0,
-                    "quizzes_passed": 0,
-                    "last_activity": datetime.utcnow().isoformat(),
-                },
-            )
+            self._progress_bucket(user_id, enrollment["module_id"])
         return enrollment
 
     def list_enrollments(self, user_id: str) -> List[Dict]:
@@ -110,11 +100,32 @@ class InMemoryUserStore:
                     return lesson
         raise ValueError("Lesson not found")
 
+    def submit_module_exercise(self, user_id: str, module_id: str, chapter_id: str, exercise_id: str, solution: str) -> Dict:
+        module = self.get_module_instance(user_id, module_id)
+        for ch in module["chapters"]:
+            if ch["chapter_id"] != chapter_id:
+                continue
+            for exercise in ch["exercises"]:
+                if exercise["exercise_id"] == exercise_id:
+                    score = 85 if len(solution.strip()) > 30 else 65
+                    exercise["completed"] = True
+                    exercise["score"] = score
+                    self.save_exercise_submission(user_id, exercise_id, score, "Module exercise submission")
+                    self.track_activity(user_id, module_id, lessons=0, concepts=1, minutes=20)
+                    return {"exercise_id": exercise_id, "score": score, "feedback": "Exercise evaluated"}
+        raise ValueError("Exercise not found")
+
     def complete_chapter(self, user_id: str, module_id: str, chapter_id: str) -> Dict:
         module = self.get_module_instance(user_id, module_id)
         for ch in module["chapters"]:
             if ch["chapter_id"] == chapter_id:
                 if not ch.get("completed"):
+                    # Chapter considered complete only if lesson+exercise+quiz are done
+                    lessons_done = all(lesson.get("completed") for lesson in ch["lessons"])
+                    exercises_done = all(ex.get("completed") for ex in ch["exercises"])
+                    quizzes_done = all(qz.get("completed") for qz in ch["quizzes"])
+                    if not (lessons_done and exercises_done and quizzes_done):
+                        raise ValueError("Complete lessons, exercise, and quiz before finishing chapter")
                     ch["completed"] = True
                     bucket = self._progress_bucket(user_id, module_id)
                     bucket["completed_chapters"] += 1
@@ -140,12 +151,36 @@ class InMemoryUserStore:
                     return {"quiz_id": quiz_id, "score": score, "total": 1}
         raise ValueError("Quiz not found")
 
+    def evaluate_next_steps(self, user_id: str, module_id: str) -> Dict:
+        module = self.get_module_instance(user_id, module_id)
+        bucket = self._progress_bucket(user_id, module_id)
+        total_chapters = len(module.get("chapters", []))
+        completion_ratio = bucket["completed_chapters"] / max(1, total_chapters)
+        if completion_ratio < 0.34:
+            next_steps = ["Finish all lessons in current chapter", "Submit chapter exercise", "Take chapter quiz"]
+        elif completion_ratio < 1:
+            next_steps = ["Complete remaining chapters", "Improve quiz accuracy to 80%+", "Start project planning"]
+        else:
+            next_steps = ["Build final demo project", "Prepare portfolio write-up", "Start next module at higher difficulty"]
+        return {
+            "module_id": module_id,
+            "completion_ratio": round(completion_ratio, 2),
+            "performance": {
+                "completed_lessons": bucket["completed_lessons"],
+                "completed_chapters": bucket["completed_chapters"],
+                "quizzes_passed": bucket["quizzes_passed"],
+                "time_spent_minutes": bucket["time_spent_minutes"],
+            },
+            "next_steps": next_steps,
+        }
+
     def track_activity(self, user_id: str, module_id: str, lessons: int, concepts: int, minutes: int) -> Dict:
         bucket = self._progress_bucket(user_id, module_id)
         bucket["completed_lessons"] += max(0, lessons)
         bucket["completed_concepts"] += max(0, concepts)
         bucket["time_spent_minutes"] += max(0, minutes)
         bucket["last_activity"] = datetime.utcnow().isoformat()
+        bucket["streak_days"] = bucket.get("streak_days", 0) + 1
         return bucket
 
     def save_exercise_submission(self, user_id: str, exercise_id: str, score: int, feedback: str) -> Dict:
@@ -188,6 +223,7 @@ class InMemoryUserStore:
                 "time_spent_minutes": 0,
                 "completed_chapters": 0,
                 "quizzes_passed": 0,
+                "streak_days": 0,
                 "last_activity": datetime.utcnow().isoformat(),
             },
         )

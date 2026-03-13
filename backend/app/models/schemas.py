@@ -86,6 +86,7 @@ class ProgressSnapshot(BaseModel):
     time_spent_minutes: int
     completed_chapters: int = 0
     quizzes_passed: int = 0
+    streak_days: int = 0
     last_activity: Optional[str] = None
 
 
@@ -112,6 +113,7 @@ class ModuleExercise(BaseModel):
     exercise_id: str
     prompt: str
     completed: bool = False
+    score: int = 0
 
 
 class ModuleQuiz(BaseModel):
@@ -161,12 +163,27 @@ class ChapterCompleteRequest(BaseModel):
     chapter_id: str
 
 
+class ModuleExerciseSubmitRequest(BaseModel):
+    user_id: str
+    module_id: str
+    chapter_id: str
+    exercise_id: str
+    solution: str
+
+
 class ModuleQuizSubmitRequest(BaseModel):
     user_id: str
     module_id: str
     chapter_id: str
     quiz_id: str
     answer: str
+
+
+class ModuleEvaluationResponse(BaseModel):
+    module_id: str
+    completion_ratio: float
+    performance: Dict
+    next_steps: List[str]
 
 
 class ExerciseItem(BaseModel):

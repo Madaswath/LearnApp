@@ -19,6 +19,8 @@ from app.models.schemas import (
     MentorMessageResponse,
     ModuleBuildRequest,
     ModuleContentResponse,
+    ModuleEvaluationResponse,
+    ModuleExerciseSubmitRequest,
     ModuleQuizSubmitRequest,
     ProjectItem,
     PromptRenderRequest,
@@ -167,6 +169,23 @@ def complete_lesson(payload: LessonCompleteRequest) -> dict:
     return {"lesson": lesson}
 
 
+@router.post("/modules/exercise/submit", response_model=ExerciseSubmitResponse)
+def submit_module_exercise(payload: ModuleExerciseSubmitRequest) -> ExerciseSubmitResponse:
+    try:
+        result = user_store.submit_module_exercise(
+            payload.user_id,
+            payload.module_id,
+            payload.chapter_id,
+            payload.exercise_id,
+            payload.solution,
+        )
+        progress = user_store._progress_bucket(payload.user_id, payload.module_id)
+        tracker.record_progress(payload.user_id, payload.module_id, progress)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return ExerciseSubmitResponse(**result)
+
+
 @router.post("/modules/chapter/complete")
 def complete_chapter(payload: ChapterCompleteRequest) -> dict:
     try:
@@ -192,6 +211,15 @@ def submit_module_quiz(payload: ModuleQuizSubmitRequest) -> QuizSubmitResponse:
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return QuizSubmitResponse(**result)
+
+
+@router.get("/modules/{user_id}/{module_id}/evaluation", response_model=ModuleEvaluationResponse)
+def module_evaluation(user_id: str, module_id: str) -> ModuleEvaluationResponse:
+    try:
+        evaluation = user_store.evaluate_next_steps(user_id, module_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return ModuleEvaluationResponse(**evaluation)
 
 
 @router.post("/progress/track")

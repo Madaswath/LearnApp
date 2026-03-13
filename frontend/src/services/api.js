@@ -16,8 +16,10 @@ export const fetchEnrollments = async (userId) => (await api.get(`/enrollments/$
 export const buildModule = async (payload) => (await api.post('/modules/build', payload)).data
 export const getModule = async (userId, moduleId) => (await api.get(`/modules/${userId}/${moduleId}`)).data
 export const completeLesson = async (payload) => (await api.post('/modules/lesson/complete', payload)).data
+export const submitModuleExercise = async (payload) => (await api.post('/modules/exercise/submit', payload)).data
 export const completeChapter = async (payload) => (await api.post('/modules/chapter/complete', payload)).data
 export const submitModuleQuiz = async (payload) => (await api.post('/modules/quiz/submit', payload)).data
+export const fetchModuleEvaluation = async (userId, moduleId) => (await api.get(`/modules/${userId}/${moduleId}/evaluation`)).data
 
 export const trackProgress = async (payload) => (await api.post('/progress/track', payload)).data
 export const fetchProgress = async (userId) => (await api.get(`/progress/${userId}`)).data
