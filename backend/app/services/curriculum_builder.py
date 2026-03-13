@@ -136,12 +136,10 @@ Return STRICT JSON in this format only:
             ],
             "project": {"project_id": "string", "title": "string", "description": "string", "milestones": ["string"]},
         }
-        kb_context = self._topic_context_markdown(topic)
         prompt = (
             "Generate in-depth learning content as STRICT JSON only. "
             "Create exactly 3 chapters with 3 lessons each."
             f" Topic: {topic}. Difficulty: {difficulty}. Module ID: {module_id}."
-            f" Use this topic markdown context: {kb_context[:4000]}."
             f" Follow this shape: {json.dumps(schema)}"
         )
         payload = {
@@ -162,6 +160,7 @@ Return STRICT JSON in this format only:
             return data
         except Exception:
             return None
+
 
     def _load_topic_notes(self, topic: str, difficulty: str) -> list[str]:
         slug = topic.strip().lower().replace(" ", "-")

@@ -71,12 +71,10 @@ class SQLiteClient:
                     completed_chapters INTEGER,
                     quizzes_passed INTEGER,
                     streak_days INTEGER,
-                    course_completed INTEGER DEFAULT 0,
                     time_spent_minutes INTEGER,
                     last_activity TEXT,
                     PRIMARY KEY (user_id, module_id)
                 );
-
 
                 CREATE TABLE IF NOT EXISTS exercise_submissions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -135,9 +133,6 @@ class SQLiteClient:
                 );
                 """
             )
-            cols = [row[1] for row in conn.execute("PRAGMA table_info(module_progress)").fetchall()]
-            if "course_completed" not in cols:
-                conn.execute("ALTER TABLE module_progress ADD COLUMN course_completed INTEGER DEFAULT 0")
 
 
 sqlite_client = SQLiteClient()

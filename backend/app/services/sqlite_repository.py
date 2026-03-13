@@ -90,16 +90,15 @@ class SQLiteRepository:
                 """
                 INSERT INTO module_progress (
                     user_id, module_id, completed_lessons, completed_concepts,
-                    completed_chapters, quizzes_passed, streak_days, course_completed, time_spent_minutes, last_activity
+                    completed_chapters, quizzes_passed, streak_days, time_spent_minutes, last_activity
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(user_id, module_id) DO UPDATE SET
                     completed_lessons=excluded.completed_lessons,
                     completed_concepts=excluded.completed_concepts,
                     completed_chapters=excluded.completed_chapters,
                     quizzes_passed=excluded.quizzes_passed,
                     streak_days=excluded.streak_days,
-                    course_completed=excluded.course_completed,
                     time_spent_minutes=excluded.time_spent_minutes,
                     last_activity=excluded.last_activity
                 """,
@@ -111,7 +110,6 @@ class SQLiteRepository:
                     progress.get("completed_chapters", 0),
                     progress.get("quizzes_passed", 0),
                     progress.get("streak_days", 0),
-                    1 if progress.get("course_completed") else 0,
                     progress.get("time_spent_minutes", 0),
                     progress.get("last_activity", self._now()),
                 ),
