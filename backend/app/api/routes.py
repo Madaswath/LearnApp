@@ -35,6 +35,7 @@ from app.models.schemas import (
 from app.services.course_builder import CourseBuilder, course_builder as _cb
 from app.services.rag_engine import RAGEngine, rag_engine as _re
 from app.services.user_store import UserStore, user_store as _us
+from app.agents.registry import get_all_agents, get_group_summary
 
 router = APIRouter()
 
@@ -737,40 +738,14 @@ def generate_learning_path(
 # ── 29. Agents – list ────────────────────────────────────────────────────────
 
 @router.get("/agents", tags=["Agents"])
-def list_agents():
+def list_agents(group: Optional[str] = Query(None, description="Filter by group name")):
+    agents = get_all_agents()
+    if group:
+        agents = [a for a in agents if a["group"].lower() == group.lower()]
     return {
-        "agents": [
-            {
-                "id": "rag-retriever",
-                "name": "RAG Retriever",
-                "description": "Retrieves relevant knowledge base chunks for a given query.",
-                "capabilities": ["search", "retrieve", "rank"],
-            },
-            {
-                "id": "course-builder",
-                "name": "Course Builder",
-                "description": "Generates structured course modules from knowledge base content.",
-                "capabilities": ["build_course", "build_exercises", "build_quizzes", "build_projects"],
-            },
-            {
-                "id": "ai-mentor",
-                "name": "AI Mentor",
-                "description": "Answers learner questions using retrieved knowledge.",
-                "capabilities": ["answer", "explain", "suggest"],
-            },
-            {
-                "id": "progress-analyst",
-                "name": "Progress Analyst",
-                "description": "Analyses learning activity and generates actionable insights.",
-                "capabilities": ["analyse", "recommend", "track"],
-            },
-            {
-                "id": "quiz-generator",
-                "name": "Quiz Generator",
-                "description": "Creates quizzes and exercises from knowledge base content.",
-                "capabilities": ["generate_quiz", "generate_exercise", "grade"],
-            },
-        ]
+        "agents": agents,
+        "total": len(agents),
+        "groups": get_group_summary(),
     }
 
 
@@ -788,7 +763,7 @@ def get_metrics(
         "total_enrollments": us.total_enrollments(),
         "topics_available": len(topics),
         "knowledge_documents": total_docs,
-        "agents_active": 5,
+        "agents_active": len(get_all_agents()),
         "api_version": "1.0.0",
         "timestamp": _now(),
     }

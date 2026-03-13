@@ -4,3 +4,7 @@ __pycache__/
 .env
 .venv/
 venv/
+# SQLite3 database (persistent data – do not commit)
+storage/lumina.db
+storage/lumina.db-wal
+storage/lumina.db-shm

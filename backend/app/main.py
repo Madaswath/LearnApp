@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.api.routes import router
+from app.db.database import init_db
 from app.services.rag_engine import rag_engine
 from app.services.user_store import user_store
 from app.services.course_builder import course_builder
@@ -12,10 +13,11 @@ from app.services.course_builder import course_builder
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: (re)load the knowledge base and prompt templates
+    # Startup: initialise SQLite3 schema and reload the knowledge base
+    init_db()
     rag_engine.reload()
     yield
-    # Shutdown: nothing to clean up for in-memory stores
+    # Shutdown: nothing extra needed (SQLite connections are closed per-request)
 
 
 app = FastAPI(

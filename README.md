@@ -19,6 +19,8 @@ An AI-powered personalized learning platform that builds structured courses from
 │                                              │
 │  RAG Engine ──► storage/knowledge_base/      │
 │  Course Builder ──► prompts/                 │
+│  23 AI Agents   ──► agents/registry.py       │
+│  SQLite3 DB     ──► storage/lumina.db        │
 └─────────────────────────────────────────────┘
 ```
 
@@ -30,13 +32,18 @@ LearnApp/
 │   ├── app/
 │   │   ├── main.py              # FastAPI entry point
 │   │   ├── api/routes.py        # All 30+ API endpoints
-│   │   ├── core/config.py       # Settings
+│   │   ├── core/config.py       # Settings (incl. DB_PATH)
 │   │   ├── models/schemas.py    # Pydantic models
+│   │   ├── db/
+│   │   │   └── database.py      # SQLite3 schema + connection
+│   │   ├── agents/
+│   │   │   └── registry.py      # 23-agent registry (6 groups)
 │   │   └── services/
 │   │       ├── rag_engine.py    # RAG retrieval system
 │   │       ├── course_builder.py # Course generation
-│   │       └── user_store.py   # In-memory user data
+│   │       └── user_store.py   # SQLite3-backed user data
 │   ├── storage/
+│   │   ├── lumina.db            # SQLite3 database (auto-created)
 │   │   └── knowledge_base/     # Topic-scoped knowledge files
 │   │       ├── python/
 │   │       ├── javascript/
@@ -125,7 +132,7 @@ docker-compose up --build
 | POST | `/api/v1/learning-path` | Generate learning path |
 | GET | `/api/v1/progress/{user_id}` | Get progress |
 | POST | `/api/v1/progress/track` | Track activity |
-| GET | `/api/v1/agents` | List AI agents |
+| GET | `/api/v1/agents` | List all 23 AI agents (optional `?group=` filter) |
 | GET | `/api/v1/settings/profile/{uid}` | Get profile |
 | POST | `/api/v1/settings/profile` | Save profile |
 | POST | `/api/v1/prompts/{name}` | Render prompt template |
@@ -155,6 +162,34 @@ Each endpoint activity has a corresponding prompt template:
 
 Templates support `{variable}` substitution.
 
+## 🤖 23-Agent Registry
+
+All 23 agents are defined in `backend/app/agents/registry.py` across 6 groups:
+
+| Group | Count | Agents |
+|-------|-------|--------|
+| Curriculum Generation | 7 | Roadmap Architect, Curriculum Builder, Lesson Writer, Exercise Generator, Quiz Generator, Project Ideator, Resource Curator |
+| Personalisation | 4 | Skill Gap Analyst, Difficulty Adjuster, Learning Style Detector, Pace Optimizer |
+| Mentor System | 4 | AI Mentor, Concept Explainer, Hint Provider, Concept Simplifier |
+| Content Quality | 3 | Content Evaluator, Content Improver, Knowledge Updater |
+| Analytics | 3 | Progress Analyst, Engagement Tracker, Outcome Predictor |
+| Research | 2 | Web Researcher, Documentation Scraper |
+
+Use `GET /api/v1/agents?group=Curriculum+Generation` to filter by group.
+
+## 🗄️ Database (SQLite3)
+
+All persistent data is stored in a local SQLite3 file at `backend/storage/lumina.db` (auto-created on first startup).
+
+| Table | Purpose |
+|-------|---------|
+| `users` | User accounts (email, password hash, profile) |
+| `progress` | Activity history per user |
+| `enrollments` | Module enrollments per user |
+| `modules` | Cached built course modules per user |
+
+Configure the path via `DB_PATH` in `.env` (defaults to `storage/lumina.db`).
+
 ## 📊 Pages
 
 | Page | Route | Description |
@@ -175,4 +210,6 @@ Templates support `{variable}` substitution.
 - Passwords hashed with SHA-256 (use bcrypt in production)
 - Demo tokens (use signed JWT in production)
 - CORS configurable via `ALLOWED_ORIGINS` env var
+- SQLite3 uses parameterised queries throughout (no SQL injection)
+- Database file excluded from git via `.gitignore`
 - No secrets committed to repository
