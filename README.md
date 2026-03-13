@@ -1,6 +1,6 @@
-# Lumina AI
+# LearnApp
 
-Lumina AI is a production-oriented personalized learning platform combining a React SaaS frontend, FastAPI backend, multi-agent curriculum generation, and RAG-powered mentoring.
+LearnApp is a production-oriented personalized learning platform combining a React SaaS frontend, FastAPI backend, multi-agent curriculum generation, and RAG-powered mentoring.
 
 ## Architecture
 
@@ -8,7 +8,7 @@ Lumina AI is a production-oriented personalized learning platform combining a Re
 - **Backend API**: FastAPI + Pydantic.
 - **AI Agent Mesh**: 23-role agent registry compatible with CrewAI orchestration patterns.
 - **RAG Engine**: Retrieval façade for lesson/exercise/project context grounding.
-- **Supabase**: Auth + PostgreSQL + pgvector schema.
+- **SQLite3**: local persistent app data (users, enrollments, progress, analytics).
 - **Analytics/Adaptation**: Adaptive curriculum engine adjusts based on performance and engagement.
 
 ## Key Features
@@ -30,7 +30,7 @@ Lumina AI is a production-oriented personalized learning platform combining a Re
 - Dockerized local startup.
 - Knowledge base storage by topic folders with markdown/html/pdf-extracted files.
 - Prompt template library for generating course materials, chapters, lessons, quizzes, practice tasks, and projects.
-- Supabase-ready tracker hooks for multi-user enrollment, progress analytics, streak/performance signals.
+- SQLite3-backed tracker hooks for multi-user enrollment, progress analytics, streak/performance signals.
 
 ## Multi-Agent Ecosystem
 
@@ -114,24 +114,23 @@ npm run dev
 
 App URL: `http://localhost:5173`
 
-## Database + RLS
+## Database
 
-Apply `backend/migrations/001_init.sql` and `backend/migrations/002_app_alignment.sql` to Supabase SQL editor.
+SQLite tables are created automatically at startup and stored at `SQLITE_DB_PATH` (default: `backend/storage/app.db`).
 
 Includes required tables:
 
 - users, topics, learning_paths, chapters, lessons, exercises, quizzes, projects, resources
 - mentor_conversations, user_progress, analytics, skill_gaps, recommendations, learning_sessions
 
-Also enables Row Level Security policies for user-owned records.
+No external database setup is required for local development.
 
 ## Environment Variables
 
 Copy `.env.example` to `.env`:
 
 - `OPENAI_API_KEY`
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
+- `SQLITE_DB_PATH`
 
 
 ## Run in VS Code (Clone → Run)
@@ -139,8 +138,8 @@ Copy `.env.example` to `.env`:
 1. Clone and open the project:
 
 ```bash
-git clone <your-repo-url> LuminaAI
-cd LuminaAI
+git clone <your-repo-url> LearnApp
+cd LearnApp
 code .
 ```
 
@@ -150,7 +149,7 @@ code .
 cp .env.example .env
 ```
 
-Then set `OPENAI_API_KEY`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY`.
+Then set `OPENAI_API_KEY` (and optionally `SQLITE_DB_PATH`).
 
 3. Install dependencies once:
 
@@ -185,9 +184,9 @@ docker compose up --build
 
 ## Production Notes
 
-- Swap stub RAG retrieval with pgvector similarity search queries.
+- Swap stub RAG retrieval with a vector similarity search backend (SQLite extension or dedicated store).
 - Replace stub orchestration calls with CrewAI crews/tasks per pathway stage.
-- Add JWT verification middleware wired to Supabase Auth JWKS.
+- Add JWT verification middleware for external auth providers if needed.
 - Add background workers for analytics and recommendation updates.
 - Add CI/CD pipeline with unit/integration/e2e tests.
 

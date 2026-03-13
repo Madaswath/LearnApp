@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { fetchProgress } from '../services/api'
 
 export default function Analytics({ user }) {
-  const navigate = useNavigate()
   const [progress, setProgress] = useState([])
 
   useEffect(() => {
@@ -18,16 +17,22 @@ export default function Analytics({ user }) {
     return { completedLessons, completedChapters, quizzesPassed, totalTime }
   }, [progress])
 
+  const chartData = useMemo(
+    () =>
+      progress.map((item) => ({
+        module: item.module_id.slice(0, 8),
+        lessons: item.completed_lessons || 0,
+        chapters: item.completed_chapters || 0,
+        quizzes: item.quizzes_passed || 0,
+      })),
+    [progress],
+  )
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 text-sm">
-        <button onClick={() => navigate(-1)} className="px-3 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50">← Previous</button>
-        <Link to="/dashboard" className="px-3 py-1 rounded-lg border border-slate-300 bg-white hover:bg-slate-50">🏠 Home</Link>
-      </div>
-
-      <section className="rounded-2xl border border-cyan-200 bg-gradient-to-r from-cyan-100 to-white p-6">
+      <section className="rounded-2xl border border-cyan-200 bg-gradient-to-r from-cyan-100 to-white p-6 shadow-sm">
         <h2 className="text-2xl font-semibold">Learning Analytics</h2>
-        <p className="text-slate-600">Track your progress, streak, and module performance trends.</p>
+        <p className="text-slate-600">Track module progress, quiz outcomes, and learning effort over time.</p>
       </section>
 
       <section className="grid md:grid-cols-4 gap-4">
@@ -38,19 +43,22 @@ export default function Analytics({ user }) {
       </section>
 
       <section className="card">
-        <h3 className="text-lg font-semibold mb-3">Module Breakdown</h3>
-        {progress.length === 0 ? (
+        <h3 className="text-lg font-semibold mb-3">Progress Chart</h3>
+        {chartData.length === 0 ? (
           <p className="text-slate-500">No analytics yet. Start learning from Topics & Modules.</p>
         ) : (
-          <div className="space-y-2">
-            {progress.map((item) => (
-              <div key={item.module_id} className="rounded-lg border border-slate-200 p-3 bg-slate-50 text-sm">
-                <p className="font-medium">{item.module_id}</p>
-                <p className="text-slate-500">
-                  Lessons {item.completed_lessons} • Chapters {item.completed_chapters} • Quizzes {item.quizzes_passed} • Streak {item.streak_days || 0}
-                </p>
-              </div>
-            ))}
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="module" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="lessons" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="chapters" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="quizzes" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         )}
       </section>

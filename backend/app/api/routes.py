@@ -6,6 +6,7 @@ from app.models.schemas import (
     ActivityTrackRequest,
     AuthResponse,
     ChapterCompleteRequest,
+    CourseCompleteRequest,
     EnrollRequest,
     EnrollResponse,
     ExerciseItem,
@@ -42,8 +43,8 @@ from app.services.curriculum_builder import CurriculumBuilder
 from app.services.knowledge_base import KnowledgeBase
 from app.services.prompt_library import PromptLibrary
 from app.services.rag_engine import RAGEngine
-from app.services.supabase_repository import SupabaseRepository
-from app.services.supabase_tracker import SupabaseTracker
+from app.services.sqlite_repository import SQLiteRepository
+from app.services.sqlite_tracker import SQLiteTracker
 from app.services.user_store import user_store
 
 
@@ -53,8 +54,8 @@ rag_engine = RAGEngine()
 curriculum_builder = CurriculumBuilder()
 kb = KnowledgeBase()
 prompts = PromptLibrary()
-tracker = SupabaseTracker()
-repo = SupabaseRepository()
+tracker = SQLiteTracker()
+repo = SQLiteRepository()
 
 
 def _is_strong_password(password: str) -> bool:
@@ -85,7 +86,7 @@ def signup(payload: SignupRequest) -> AuthResponse:
         repo.create_or_update_user(user.id, user.name, user.email, payload.password)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return AuthResponse(user_id=user.id, name=user.name, email=user.email)
+    return AuthResponse(user_id=user.id, name=user.name, email=user.email, streak_days=user.streak_days)
 
 
 @router.post("/auth/login", response_model=AuthResponse)
@@ -94,7 +95,7 @@ def login(payload: LoginRequest) -> AuthResponse:
         user = user_store.login(payload.email, payload.password)
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
-    return AuthResponse(user_id=user.id, name=user.name, email=user.email)
+    return AuthResponse(user_id=user.id, name=user.name, email=user.email, streak_days=user.streak_days)
 
 
 @router.get("/knowledge/topics")
@@ -167,6 +168,9 @@ def build_module(payload: ModuleBuildRequest) -> ModuleContentResponse:
     try:
         stored = user_store.set_module_instance(payload.user_id, payload.module_id, module_data)
         repo.save_module_instance(payload.user_id, payload.module_id, stored)
+        progress = user_store._progress_bucket(payload.user_id, payload.module_id)
+        repo.save_module_progress(payload.user_id, payload.module_id, progress)
+        tracker.record_progress(payload.user_id, payload.module_id, progress)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return ModuleContentResponse(**stored)
@@ -224,6 +228,18 @@ def complete_chapter(payload: ChapterCompleteRequest) -> dict:
     return {"chapter": chapter}
 
 
+
+
+@router.post("/modules/course/complete")
+def complete_course(payload: CourseCompleteRequest) -> dict:
+    try:
+        progress = user_store.complete_course(payload.user_id, payload.module_id)
+        repo.save_module_progress(payload.user_id, payload.module_id, progress)
+        tracker.record_progress(payload.user_id, payload.module_id, progress)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"module_id": payload.module_id, "course_completed": True}
+
 @router.post("/modules/quiz/submit", response_model=QuizSubmitResponse)
 def submit_module_quiz(payload: ModuleQuizSubmitRequest) -> QuizSubmitResponse:
     try:
@@ -235,6 +251,9 @@ def submit_module_quiz(payload: ModuleQuizSubmitRequest) -> QuizSubmitResponse:
             payload.answer,
         )
         repo.save_quiz_submission(payload.user_id, payload.module_id, payload.quiz_id, result["score"], result["total"])
+        progress = user_store._progress_bucket(payload.user_id, payload.module_id)
+        repo.save_module_progress(payload.user_id, payload.module_id, progress)
+        tracker.record_progress(payload.user_id, payload.module_id, progress)
         tracker.record_quiz_performance(payload.user_id, payload.quiz_id, result["score"], result["total"])
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -323,13 +342,13 @@ def demo_readiness() -> dict:
     checks = {
         "knowledge_topics": len(kb.list_topics()),
         "prompt_templates": len(prompts.names()),
-        "supabase_tracker_enabled": tracker.enabled,
-        "supabase_repo_enabled": repo.enabled,
+        "sqlite_tracker_enabled": tracker.enabled,
+        "sqlite_repo_enabled": repo.enabled,
     }
     actions = []
     if not repo.enabled:
-        actions.append("Set SUPABASE_URL and SUPABASE_ANON_KEY to enable persistent multi-user demo data.")
-    actions.append("Apply backend/migrations/001_init.sql and backend/migrations/002_app_alignment.sql in Supabase SQL editor.")
+        actions.append("Set SQLITE_DB_PATH (optional) to customize where persistent multi-user demo data is stored.")
+    actions.append("SQLite tables are auto-created on startup when the backend imports the persistence layer.")
     actions.append("Use /docs to validate signup -> enroll -> start module -> lesson/exercise/quiz/chapter completion -> evaluation flow.")
     return {"checks": checks, "actions": actions}
 

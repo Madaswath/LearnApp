@@ -33,6 +33,7 @@ class AuthResponse(BaseModel):
     user_id: str
     name: str
     email: EmailStr
+    streak_days: int = 0
 
 
 class TopicSearchRequest(BaseModel):
@@ -47,7 +48,6 @@ class LessonPlan(BaseModel):
 class TopicModule(BaseModel):
     module_id: str
     title: str
-    difficulty: str
     estimated_hours: int
     lessons: List[LessonPlan]
     projects: List[str]
@@ -63,7 +63,7 @@ class EnrollRequest(BaseModel):
     topic: str
     module_id: str
     module_title: str
-    difficulty: str
+    difficulty: str = ""
 
 
 class EnrollResponse(BaseModel):
@@ -72,7 +72,7 @@ class EnrollResponse(BaseModel):
     topic: str
     module_id: str
     module_title: str
-    difficulty: str
+    difficulty: str = ""
     created_at: str
 
 
@@ -104,7 +104,7 @@ class ModuleBuildRequest(BaseModel):
     user_id: str
     module_id: str
     topic: str
-    difficulty: str
+    difficulty: str = "core"
 
 
 class ModuleLesson(BaseModel):
@@ -304,3 +304,8 @@ class ProgressEvent(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     app: str
+
+
+class CourseCompleteRequest(BaseModel):
+    user_id: str
+    module_id: str
