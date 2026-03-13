@@ -158,6 +158,16 @@ class InMemoryUserStore:
                     return {"quiz_id": quiz_id, "score": score, "total": 1}
         raise ValueError("Quiz not found")
 
+
+    def complete_course(self, user_id: str, module_id: str) -> Dict:
+        module = self.get_module_instance(user_id, module_id)
+        if not all(ch.get("completed") for ch in module.get("chapters", [])):
+            raise ValueError("Complete all chapters before submitting the course")
+        bucket = self._progress_bucket(user_id, module_id)
+        bucket["course_completed"] = True
+        bucket["last_activity"] = datetime.utcnow().isoformat()
+        return bucket
+
     def evaluate_next_steps(self, user_id: str, module_id: str) -> Dict:
         module = self.get_module_instance(user_id, module_id)
         bucket = self._progress_bucket(user_id, module_id)
@@ -249,6 +259,7 @@ class InMemoryUserStore:
                 "completed_chapters": 0,
                 "quizzes_passed": 0,
                 "streak_days": 0,
+                "course_completed": False,
                 "last_activity": datetime.utcnow().isoformat(),
             },
         )

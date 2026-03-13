@@ -11,7 +11,85 @@ from app.core.config import settings
 class CurriculumBuilder:
     levels = ["beginner", "intermediate", "advanced"]
 
+
+    def _topic_context_markdown(self, topic: str) -> str:
+        slug = topic.strip().lower().replace(" ", "-")
+        root = Path("backend/storage/knowledge_base") / slug
+        if not root.exists():
+            return ""
+        chunks = []
+        for md in sorted(root.glob("*.md")):
+            text = md.read_text(encoding="utf-8", errors="ignore")[:3000]
+            chunks.append(f"## {md.name}\n{text}")
+        return "\n\n".join(chunks)[:9000]
+
+    def _topic_prompt(self, topic: str) -> str:
+        topic_context = self._topic_context_markdown(topic)
+        return f"""You are an expert curriculum designer and educator specializing in technology education.
+
+Create a COMPLETE structured course for this topic: {topic}
+
+Knowledge base context markdown (must use this while designing depth):
+{topic_context or "No local context provided."}
+
+Requirements:
+- Progression must be beginner -> intermediate -> advanced.
+- Produce 3 major modules only (one per difficulty level).
+- Each module needs: title, description, learning objectives, and estimated hours.
+- Each module should include 3-6 chapters and each chapter should include 3-5 lessons.
+- Include practical depth, quizzes, assessments, mini projects, and capstone orientation.
+
+Return STRICT JSON in this format only:
+{{
+  "topic": "{topic}",
+  "modules": [
+    {{
+      "module_id": "string",
+      "title": "string",
+      "difficulty": "beginner|intermediate|advanced",
+      "estimated_hours": 12,
+      "lessons": [{{"lesson_title": "string", "concepts": ["string"]}}],
+      "projects": ["string", "string"]
+    }}
+  ]
+}}
+"""
+
+    def _groq_generate_topic_modules(self, topic: str) -> Dict | None:
+        if not settings.groq_api_key:
+            return None
+        payload = {
+            "model": settings.groq_model,
+            "messages": [
+                {"role": "system", "content": "You create deep curriculum JSON only."},
+                {"role": "user", "content": self._topic_prompt(topic)},
+            ],
+            "temperature": 0.3,
+            "max_tokens": 1800,
+        }
+        headers = {"Authorization": f"Bearer {settings.groq_api_key}", "Content-Type": "application/json"}
+        try:
+            resp = httpx.post("https://api.groq.com/openai/v1/chat/completions", json=payload, headers=headers, timeout=25.0)
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"]
+            data = json.loads(content)
+            modules = data.get("modules", [])
+            if isinstance(modules, list) and modules:
+                for m in modules:
+                    m.setdefault("module_id", str(uuid4()))
+                    m.setdefault("estimated_hours", 12)
+                    m.setdefault("lessons", [])
+                    m.setdefault("projects", [])
+                return {"topic": data.get("topic", topic), "modules": modules[:3]}
+            return None
+        except Exception:
+            return None
+
     def build_topic_modules(self, topic: str) -> Dict:
+        generated = self._groq_generate_topic_modules(topic)
+        if generated:
+            return generated
+
         modules: List[Dict] = []
         for idx, level in enumerate(self.levels, start=1):
             modules.append(

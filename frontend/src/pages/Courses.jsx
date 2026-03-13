@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   buildModule,
   completeChapter,
+  completeCourse,
   completeLesson,
   enrollModule,
   fetchEnrollments,
+  fetchKnowledgeTopics,
   fetchModuleEvaluation,
   getModule,
   searchTopicModules,
@@ -14,6 +16,7 @@ import {
 
 export default function Courses({ user }) {
   const [topic, setTopic] = useState('Deep Learning')
+  const [topics, setTopics] = useState([])
   const [result, setResult] = useState(null)
   const [message, setMessage] = useState('')
   const [enrollments, setEnrollments] = useState([])
@@ -22,19 +25,19 @@ export default function Courses({ user }) {
   const [evaluation, setEvaluation] = useState(null)
   const [exerciseInput, setExerciseInput] = useState({})
 
-  const refreshEnrollments = () => {
-    fetchEnrollments(user.user_id)
-      .then((res) => setEnrollments(res.enrollments || []))
-      .catch(() => setEnrollments([]))
-  }
+  const refreshEnrollments = () => fetchEnrollments(user.user_id).then((res) => setEnrollments(res.enrollments || [])).catch(() => setEnrollments([]))
 
   useEffect(() => {
     refreshEnrollments()
+    fetchKnowledgeTopics()
+      .then((res) => setTopics(res.topics || []))
+      .catch(() => setTopics(['python', 'sql', 'statistics-for-data-science', 'machine-learning', 'deep-learning', 'nlp']))
   }, [user.user_id])
 
-  const onSearch = async () => {
+  const onSearch = async (topicValue = topic) => {
     setMessage('')
-    const data = await searchTopicModules({ topic })
+    const data = await searchTopicModules({ topic: topicValue })
+    setTopic(topicValue)
     setResult(data)
   }
 
@@ -44,13 +47,12 @@ export default function Courses({ user }) {
       topic,
       module_id: module.module_id,
       module_title: module.title,
-      difficulty: module.difficulty,
     })
     setMessage(`✅ Enrolled in ${enrolled.module_title} (${enrolled.difficulty}).`)
     refreshEnrollments()
   }
 
-  const openOrBuildModule = async (moduleId, selectedTopic, difficulty) => {
+  const openOrBuildModule = async (moduleId, selectedTopic) => {
     try {
       const existing = await getModule(user.user_id, moduleId)
       setActiveModule(existing)
@@ -81,33 +83,59 @@ export default function Courses({ user }) {
     if (!activeModule) return
     const next = await getModule(user.user_id, activeModule.module_id)
     setActiveModule(next)
-    const ev = await fetchModuleEvaluation(user.user_id, activeModule.module_id)
-    setEvaluation(ev)
+    setEvaluation(await fetchModuleEvaluation(user.user_id, activeModule.module_id))
   }
 
-  const markLessonDone = async (chapterId, lessonId) => {
-    await completeLesson({ user_id: user.user_id, module_id: activeModule.module_id, chapter_id: chapterId, lesson_id: lessonId })
+  const activeChapter = useMemo(
+    () => activeModule?.chapters?.find((c) => c.chapter_id === activeChapterId) || activeModule?.chapters?.[0],
+    [activeChapterId, activeModule],
+  )
+
+  const lessonIndex = useMemo(
+    () => activeChapter?.lessons?.findIndex((l) => l.lesson_id === activeLessonId) ?? -1,
+    [activeChapter, activeLessonId],
+  )
+
+  const activeLesson = lessonIndex >= 0 ? activeChapter?.lessons?.[lessonIndex] : activeChapter?.lessons?.[0]
+
+  const goPreviousSection = () => {
+    if (!activeChapter?.lessons?.length) return
+    const idx = lessonIndex >= 0 ? lessonIndex : 0
+    if (idx > 0) setActiveLessonId(activeChapter.lessons[idx - 1].lesson_id)
+  }
+
+  const goNextSection = () => {
+    if (!activeChapter?.lessons?.length) return
+    const idx = lessonIndex >= 0 ? lessonIndex : 0
+    if (idx < activeChapter.lessons.length - 1) setActiveLessonId(activeChapter.lessons[idx + 1].lesson_id)
+  }
+
+  const markLessonDone = async () => {
+    if (!activeLesson || !activeChapter || !activeModule) return
+    await completeLesson({ user_id: user.user_id, module_id: activeModule.module_id, chapter_id: activeChapter.chapter_id, lesson_id: activeLesson.lesson_id })
     await refreshModule()
     setMessage('✅ Lesson marked complete.')
   }
 
-  const submitExerciseAtChapterEnd = async (chapterId, exerciseId) => {
-    const key = `${chapterId}:${exerciseId}`
-    const solution = exerciseInput[key] || ''
-    const res = await submitModuleExercise({
-      user_id: user.user_id,
-      module_id: activeModule.module_id,
-      chapter_id: chapterId,
-      exercise_id: exerciseId,
-      solution,
-    })
+  const submitExerciseAtChapterEnd = async (exerciseId) => {
+    if (!activeChapter || !activeModule) return
+    const key = `${activeChapter.chapter_id}:${exerciseId}`
+    const res = await submitModuleExercise({ user_id: user.user_id, module_id: activeModule.module_id, chapter_id: activeChapter.chapter_id, exercise_id: exerciseId, solution: exerciseInput[key] || '' })
     await refreshModule()
     setMessage(`✅ Exercise submitted. Score: ${res.score}`)
   }
 
-  const markChapterDone = async (chapterId) => {
+  const submitQuiz = async (quizId, answer) => {
+    if (!activeChapter || !activeModule) return
+    const res = await submitModuleQuiz({ user_id: user.user_id, module_id: activeModule.module_id, chapter_id: activeChapter.chapter_id, quiz_id: quizId, answer })
+    await refreshModule()
+    setMessage(`✅ Exercise submitted. Score: ${res.score}`)
+  }
+
+  const markChapterDone = async () => {
+    if (!activeChapter || !activeModule) return
     try {
-      await completeChapter({ user_id: user.user_id, module_id: activeModule.module_id, chapter_id: chapterId })
+      await completeChapter({ user_id: user.user_id, module_id: activeModule.module_id, chapter_id: activeChapter.chapter_id })
       await refreshModule()
       setMessage('✅ Chapter marked complete.')
     } catch (err) {
@@ -160,18 +188,19 @@ export default function Courses({ user }) {
                 </button>
               </li>
             ))}
-          </ul>
+          </div>
         )}
-      </div>
+      </section>
 
       {result && (
-        <div className="space-y-4">
+        <section className="space-y-4">
+          <h3 className="text-lg font-semibold">Courses for: {result.topic}</h3>
           {result.modules.map((module) => (
             <div className="card shadow-sm" key={module.module_id}>
               <div className="mb-2 flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">{module.title}</h3>
-                  <p className="text-sm text-slate-500">Difficulty: {module.difficulty} • {module.estimated_hours} hours</p>
+                  <p className="text-sm text-slate-500">{module.estimated_hours} hours</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => onEnroll(module)} className="rounded-lg bg-emerald-600 px-3 py-2 text-white hover:bg-emerald-500">Enroll</button>
@@ -180,7 +209,7 @@ export default function Courses({ user }) {
               </div>
             </div>
           ))}
-        </div>
+        </section>
       )}
 
       {activeModule && (
