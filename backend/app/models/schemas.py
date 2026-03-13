@@ -222,6 +222,33 @@ class ProjectItem(BaseModel):
     milestones: List[str]
 
 
+class KnowledgeSearchResponse(BaseModel):
+    topic: str
+    documents: List[Dict]
+
+
+class PromptRenderRequest(BaseModel):
+    topic: str
+    difficulty: str = "beginner"
+
+
+class PromptRenderResponse(BaseModel):
+    prompt_name: str
+    rendered_prompt: str
+
+
+class MentorMessageRequest(BaseModel):
+    user_id: str
+    learning_path_id: str
+    question: str
+    topic: str = "deep-learning"
+
+
+class MentorMessageResponse(BaseModel):
+    answer: str
+    sources: List[str] = Field(default_factory=list)
+
+
 class LearningPathRequest(BaseModel):
     user_id: str
     topic: str
@@ -239,17 +266,6 @@ class LearningPathResponse(BaseModel):
     topic: str
     chapters: List[Chapter]
     recommendations: List[str]
-
-
-class MentorMessageRequest(BaseModel):
-    user_id: str
-    learning_path_id: str
-    question: str
-
-
-class MentorMessageResponse(BaseModel):
-    answer: str
-    sources: List[str] = Field(default_factory=list)
 
 
 class ProgressEvent(BaseModel):

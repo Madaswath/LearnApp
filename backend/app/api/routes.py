@@ -10,6 +10,7 @@ from app.models.schemas import (
     ExerciseSubmitRequest,
     ExerciseSubmitResponse,
     HealthResponse,
+    KnowledgeSearchResponse,
     LearningPathRequest,
     LearningPathResponse,
     LessonCompleteRequest,
@@ -20,6 +21,8 @@ from app.models.schemas import (
     ModuleContentResponse,
     ModuleQuizSubmitRequest,
     ProjectItem,
+    PromptRenderRequest,
+    PromptRenderResponse,
     QuizItem,
     QuizSubmitRequest,
     QuizSubmitResponse,
@@ -32,7 +35,10 @@ from app.models.schemas import (
 from app.services.agent_orchestrator import AgentOrchestrator
 from app.services.content_bank import list_exercises, list_projects, list_quizzes
 from app.services.curriculum_builder import CurriculumBuilder
+from app.services.knowledge_base import KnowledgeBase
+from app.services.prompt_library import PromptLibrary
 from app.services.rag_engine import RAGEngine
+from app.services.supabase_tracker import SupabaseTracker
 from app.services.user_store import user_store
 
 
@@ -40,6 +46,9 @@ router = APIRouter()
 orchestrator = AgentOrchestrator()
 rag_engine = RAGEngine()
 curriculum_builder = CurriculumBuilder()
+kb = KnowledgeBase()
+prompts = PromptLibrary()
+tracker = SupabaseTracker()
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -63,6 +72,26 @@ def login(payload: LoginRequest) -> AuthResponse:
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
     return AuthResponse(user_id=user.id, name=user.name, email=user.email)
+
+
+@router.get("/knowledge/topics")
+def knowledge_topics() -> dict:
+    return {"topics": kb.list_topics()}
+
+
+@router.get("/knowledge/{topic}", response_model=KnowledgeSearchResponse)
+def knowledge_topic(topic: str, q: str = "") -> KnowledgeSearchResponse:
+    documents = kb.retrieve(topic=topic, query=q or topic, k=8)
+    return KnowledgeSearchResponse(topic=topic, documents=documents)
+
+
+@router.post("/prompts/{prompt_name}", response_model=PromptRenderResponse)
+def render_prompt(prompt_name: str, payload: PromptRenderRequest) -> PromptRenderResponse:
+    try:
+        rendered = prompts.render(prompt_name, topic=payload.topic, difficulty=payload.difficulty)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return PromptRenderResponse(prompt_name=prompt_name, rendered_prompt=rendered)
 
 
 @router.get("/settings/profile/{user_id}", response_model=UserProfile)
@@ -93,6 +122,7 @@ def search_topic(payload: TopicSearchRequest) -> TopicSearchResponse:
 def enroll(payload: EnrollRequest) -> EnrollResponse:
     try:
         rec = user_store.enroll(payload.user_id, payload.model_dump())
+        tracker.record_enrollment(payload.user_id, payload.module_id, payload.topic, payload.difficulty)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return EnrollResponse(**rec)
@@ -130,6 +160,8 @@ def get_module(user_id: str, module_id: str) -> ModuleContentResponse:
 def complete_lesson(payload: LessonCompleteRequest) -> dict:
     try:
         lesson = user_store.complete_lesson(payload.user_id, payload.module_id, payload.chapter_id, payload.lesson_id)
+        progress = user_store._progress_bucket(payload.user_id, payload.module_id)
+        tracker.record_progress(payload.user_id, payload.module_id, progress)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"lesson": lesson}
@@ -139,6 +171,8 @@ def complete_lesson(payload: LessonCompleteRequest) -> dict:
 def complete_chapter(payload: ChapterCompleteRequest) -> dict:
     try:
         chapter = user_store.complete_chapter(payload.user_id, payload.module_id, payload.chapter_id)
+        progress = user_store._progress_bucket(payload.user_id, payload.module_id)
+        tracker.record_progress(payload.user_id, payload.module_id, progress)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"chapter": chapter}
@@ -154,6 +188,7 @@ def submit_module_quiz(payload: ModuleQuizSubmitRequest) -> QuizSubmitResponse:
             payload.quiz_id,
             payload.answer,
         )
+        tracker.record_quiz_performance(payload.user_id, payload.quiz_id, result["score"], result["total"])
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return QuizSubmitResponse(**result)
@@ -169,6 +204,7 @@ def track_progress(payload: ActivityTrackRequest) -> dict:
             payload.concepts_completed,
             payload.minutes_spent,
         )
+        tracker.record_progress(payload.user_id, payload.module_id, progress)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"module_id": payload.module_id, "progress": progress}
@@ -213,6 +249,7 @@ def submit_quiz(payload: QuizSubmitRequest) -> QuizSubmitResponse:
     score = sum(1 for q in quiz["questions"] if payload.answers.get(q["id"]) == q["answer"])
     try:
         user_store.save_quiz_submission(payload.user_id, payload.quiz_id, score, total)
+        tracker.record_quiz_performance(payload.user_id, payload.quiz_id, score, total)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return QuizSubmitResponse(quiz_id=payload.quiz_id, score=score, total=total)
@@ -240,5 +277,9 @@ def create_learning_path(payload: LearningPathRequest) -> LearningPathResponse:
 
 @router.post("/mentor/chat", response_model=MentorMessageResponse)
 def mentor_chat(payload: MentorMessageRequest) -> MentorMessageResponse:
-    response = rag_engine.answer(payload.question)
+    user = user_store.get_user(payload.user_id)
+    progress = None
+    if user:
+        progress = user.progress.get(payload.learning_path_id) or {}
+    response = rag_engine.answer(topic=payload.topic, question=payload.question, user_progress=progress)
     return MentorMessageResponse(answer=response["answer"], sources=response["sources"])

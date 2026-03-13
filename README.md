@@ -26,6 +26,9 @@ Lumina AI is a production-oriented personalized learning platform combining a Re
 - Adaptive recommendations driven by progress metrics.
 - SaaS dashboard pages: Login, Register, Dashboard, Courses, Exercises, Quizzes, Projects, Mentor, Analytics, Profile.
 - Dockerized local startup.
+- Knowledge base storage by topic folders with markdown/html/pdf-extracted files.
+- Prompt template library for generating course materials, chapters, lessons, quizzes, practice tasks, and projects.
+- Supabase-ready tracker hooks for multi-user enrollment, progress analytics, streak/performance signals.
 
 ## Multi-Agent Ecosystem
 
@@ -77,6 +80,24 @@ Key endpoints:
 - `POST /modules/lesson/complete`
 - `POST /modules/chapter/complete`
 - `POST /modules/quiz/submit`
+- `GET /knowledge/topics`
+- `GET /knowledge/{topic}?q=...`
+- `POST /prompts/{prompt_name}`
+
+
+## Knowledge Base & Prompt Library
+
+Local knowledge base lives under `backend/storage/knowledge_base/` with per-topic folders (for example `deep-learning/`, `langchain/`) containing mixed source files like markdown, html, and pdf-extracted text.
+
+Prompt templates live under `backend/prompts/` and are used to build:
+- course materials
+- chapters/lessons
+- quizzes
+- practice problems
+- projects
+- mentor guidance prompts
+
+RAG retrieval is implemented in `backend/app/services/knowledge_base.py` + `rag_engine.py` using topic-scoped retrieval and context-grounded mentor responses.
 
 ## Frontend Setup
 
