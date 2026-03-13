@@ -1,6 +1,6 @@
-# Lumina AI
+# LearnApp
 
-Lumina AI is a production-oriented personalized learning platform combining a React SaaS frontend, FastAPI backend, multi-agent curriculum generation, and RAG-powered mentoring.
+LearnApp is a production-oriented personalized learning platform combining a React SaaS frontend, FastAPI backend, multi-agent curriculum generation, and RAG-powered mentoring.
 
 ## Architecture
 
@@ -138,8 +138,8 @@ Copy `.env.example` to `.env`:
 1. Clone and open the project:
 
 ```bash
-git clone <your-repo-url> LuminaAI
-cd LuminaAI
+git clone <your-repo-url> LearnApp
+cd LearnApp
 code .
 ```
 

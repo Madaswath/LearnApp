@@ -23,14 +23,18 @@ class RAGEngine:
             return None
 
         system_prompt = (
-            "You are Lumina AI Mentor, a helpful support assistant for learning guidance and app navigation. "
-            "Be concise, actionable, and grounded in the provided context."
+            "You are LearnApp Mentor. Respond in concise structured format with sections: "
+            "Summary, Key Points, Next Steps, References. Keep each section short and actionable."
         )
         user_prompt = (
             f"User question: {question}\n\n"
             f"Learner progress context: {progress_hint or 'No progress yet.'}\n\n"
             f"Knowledge context:\n{context[:3000]}\n\n"
-            "Respond with: 1) direct answer, 2) practical next step."
+            "Return plain text only, with this exact structure:\n"
+            "Summary:\n- ...\n"
+            "Key Points:\n- ...\n"
+            "Next Steps:\n1. ...\n2. ...\n"
+            "References:\n- ..."
         )
 
         payload = {
@@ -39,8 +43,8 @@ class RAGEngine:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            "temperature": 0.3,
-            "max_tokens": 500,
+            "temperature": 0.2,
+            "max_tokens": 450,
         }
         headers = {
             "Authorization": f"Bearer {settings.groq_api_key}",
@@ -64,10 +68,10 @@ class RAGEngine:
         question_l = question.lower()
         if any(k in question_l for k in ["where", "navigate", "how to use", "which tab", "settings", "enroll", "start module"]):
             app_help = (
-                "App navigation help: Use 'Topics & Modules' to search and enroll. "
-                "Use sidebar Dashboard/Analytics tabs any time. "
-                "From enrollments, click 'Start Learning' to open module chapters. "
-                "Complete lessons, submit chapter exercise and quiz, then mark chapter complete."
+                "Summary:\n- Use Topics & Modules to search and enroll.\n"
+                "Key Points:\n- Open enrolled course from Dashboard Active Learning.\n- Complete lessons, then exercise, then quiz, then mark chapter complete.\n"
+                "Next Steps:\n1. Go to Courses.\n2. Click Start Learning on your enrollment.\n"
+                "References:\n- app-navigation-guide"
             )
             return {"answer": app_help, "sources": ["app-navigation-guide"]}
 
@@ -89,8 +93,15 @@ class RAGEngine:
             return {"answer": llm_answer, "sources": sources}
 
         answer = (
-            f"Progress context ({progress_hint or 'new learner'}). "
-            f"Based on {topic} context: {context[:320]} ... "
-            "Recommended next step: finish current lesson, complete chapter exercise/quiz, then evaluate next module."
+            "Summary:\n"
+            f"- {topic} question addressed with available learning context.\n"
+            "Key Points:\n"
+            f"- Learner status: {progress_hint or 'new learner'}.\n"
+            f"- Context match: {context[:220] or 'No topic documents found yet.'}\n"
+            "Next Steps:\n"
+            "1. Complete the next lesson in your active chapter.\n"
+            "2. Submit the chapter exercise and quiz, then evaluate module progress.\n"
+            "References:\n"
+            f"- {', '.join(sources) if sources else 'local-guide'}"
         )
         return {"answer": answer, "sources": sources}
