@@ -13,7 +13,7 @@ This document converts the product backlog into an execution-ready roadmap for e
 |---|---|---|
 | 01 Infrastructure Setup | In Progress | Repo, folder structure, Docker, compose, env templates, README, VS Code configs are present. Logging/linting standardization still incomplete. |
 | 02 Backend Platform | In Progress | FastAPI app, routing, auth endpoints, profile/update flows and request schemas exist. JWT auth and production-grade auth hardening still missing. |
-| 03 Database & Storage | In Progress | SQL migrations exist and Supabase adapter is wired; ORM, Redis, pooling, and seed tooling remain pending. |
+| 03 Database & Storage | In Progress | SQLite3 persistence adapter is wired with auto-created tables; ORM, Redis, pooling, and seed tooling remain pending. |
 | 04 Knowledge Base Pipeline | In Progress | Local KB files and basic loader exist; crawler/parser/chunk/embed pipeline needs full implementation. |
 | 05 Vector Database | To Do | Architecture placeholders exist; production vector indexing/search and hybrid retrieval are pending. |
 | 06 RAG Engine | In Progress | Basic retrieval and prompt scaffolding exist; evaluation, latency optimization, and stronger grounding remain. |
@@ -54,7 +54,7 @@ This document converts the product backlog into an execution-ready roadmap for e
 
 ### 03 Database & Storage
 - [x] Create database migrations
-- [x] Setup PostgreSQL/Supabase-aligned schema
+- [x] Setup SQLite3 schema and persistence layer
 - [ ] Implement ORM models (SQLAlchemy)
 - [ ] Setup Redis cache
 - [ ] Configure connection pooling
@@ -72,7 +72,7 @@ This document converts the product backlog into an execution-ready roadmap for e
 - [ ] Validate ingestion quality pipeline
 
 ### 05 Vector Database
-- [ ] Choose vector database strategy (pgvector/Supabase vs dedicated store)
+- [ ] Choose vector database strategy (SQLite extension vs dedicated store)
 - [ ] Deploy vector database profile
 - [ ] Create vector index and migration scripts
 - [ ] Implement vector search API

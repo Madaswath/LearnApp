@@ -7,8 +7,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     groq_api_key: str = ""
     groq_model: str = "llama-3.1-8b-instant"
-    supabase_url: str = ""
-    supabase_anon_key: str = ""
+    sqlite_db_path: str = "storage/app.db"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
