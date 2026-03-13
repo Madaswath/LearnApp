@@ -33,6 +33,7 @@ class AuthResponse(BaseModel):
     user_id: str
     name: str
     email: EmailStr
+    streak_days: int = 0
 
 
 class TopicSearchRequest(BaseModel):

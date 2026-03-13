@@ -13,7 +13,7 @@ import Register from './pages/Register'
 
 function App() {
   const [user, setUser] = useState(() => {
-    const raw = localStorage.getItem('lumina_user')
+    const raw = localStorage.getItem('learnapp_user')
     return raw ? JSON.parse(raw) : null
   })
 
@@ -22,8 +22,8 @@ function App() {
       user,
       setUser: (next) => {
         setUser(next)
-        if (next) localStorage.setItem('lumina_user', JSON.stringify(next))
-        else localStorage.removeItem('lumina_user')
+        if (next) localStorage.setItem('learnapp_user', JSON.stringify(next))
+        else localStorage.removeItem('learnapp_user')
       },
     }),
     [user],

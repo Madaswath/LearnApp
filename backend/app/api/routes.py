@@ -42,8 +42,8 @@ from app.services.curriculum_builder import CurriculumBuilder
 from app.services.knowledge_base import KnowledgeBase
 from app.services.prompt_library import PromptLibrary
 from app.services.rag_engine import RAGEngine
-from app.services.supabase_repository import SupabaseRepository
-from app.services.supabase_tracker import SupabaseTracker
+from app.services.sqlite_repository import SQLiteRepository
+from app.services.sqlite_tracker import SQLiteTracker
 from app.services.user_store import user_store
 
 
@@ -53,8 +53,8 @@ rag_engine = RAGEngine()
 curriculum_builder = CurriculumBuilder()
 kb = KnowledgeBase()
 prompts = PromptLibrary()
-tracker = SupabaseTracker()
-repo = SupabaseRepository()
+tracker = SQLiteTracker()
+repo = SQLiteRepository()
 
 
 def _is_strong_password(password: str) -> bool:
@@ -85,7 +85,7 @@ def signup(payload: SignupRequest) -> AuthResponse:
         repo.create_or_update_user(user.id, user.name, user.email, payload.password)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return AuthResponse(user_id=user.id, name=user.name, email=user.email)
+    return AuthResponse(user_id=user.id, name=user.name, email=user.email, streak_days=user.streak_days)
 
 
 @router.post("/auth/login", response_model=AuthResponse)
@@ -94,7 +94,7 @@ def login(payload: LoginRequest) -> AuthResponse:
         user = user_store.login(payload.email, payload.password)
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
-    return AuthResponse(user_id=user.id, name=user.name, email=user.email)
+    return AuthResponse(user_id=user.id, name=user.name, email=user.email, streak_days=user.streak_days)
 
 
 @router.get("/knowledge/topics")
@@ -323,13 +323,13 @@ def demo_readiness() -> dict:
     checks = {
         "knowledge_topics": len(kb.list_topics()),
         "prompt_templates": len(prompts.names()),
-        "supabase_tracker_enabled": tracker.enabled,
-        "supabase_repo_enabled": repo.enabled,
+        "sqlite_tracker_enabled": tracker.enabled,
+        "sqlite_repo_enabled": repo.enabled,
     }
     actions = []
     if not repo.enabled:
-        actions.append("Set SUPABASE_URL and SUPABASE_ANON_KEY to enable persistent multi-user demo data.")
-    actions.append("Apply backend/migrations/001_init.sql and backend/migrations/002_app_alignment.sql in Supabase SQL editor.")
+        actions.append("Set SQLITE_DB_PATH (optional) to customize where persistent multi-user demo data is stored.")
+    actions.append("SQLite tables are auto-created on startup when the backend imports the persistence layer.")
     actions.append("Use /docs to validate signup -> enroll -> start module -> lesson/exercise/quiz/chapter completion -> evaluation flow.")
     return {"checks": checks, "actions": actions}
 
