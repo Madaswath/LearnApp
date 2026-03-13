@@ -90,10 +90,10 @@ export default function Mentor({ user, setUser }) {
     setLoading(true)
 
     try {
-      const res = await mentor.chat({ message: text, topic: topic || 'general', user_id: user?.id })
+      const res = await mentor.chat({ question: text, topic: topic || undefined, user_id: user?.id })
       const data = res.data
-      const reply = data.response || data.message || data.reply || 'I am not sure about that. Can you rephrase?'
-      const sources = data.sources || data.citations || []
+      const reply = data.answer || data.response || data.message || data.reply || 'I am not sure about that. Can you rephrase?'
+      const sources = (data.sources || data.citations || []).map(s => typeof s === 'string' ? { title: s, url: '#' } : s)
       setMessages(m => [...m, { role: 'mentor', text: reply, sources }])
     } catch {
       setMessages(m => [...m, { role: 'mentor', text: 'Sorry, I could not connect to the mentor service. Please try again.' }])
