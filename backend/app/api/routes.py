@@ -6,6 +6,7 @@ from app.models.schemas import (
     ActivityTrackRequest,
     AuthResponse,
     ChapterCompleteRequest,
+    CourseCompleteRequest,
     EnrollRequest,
     EnrollResponse,
     ExerciseItem,
@@ -167,6 +168,9 @@ def build_module(payload: ModuleBuildRequest) -> ModuleContentResponse:
     try:
         stored = user_store.set_module_instance(payload.user_id, payload.module_id, module_data)
         repo.save_module_instance(payload.user_id, payload.module_id, stored)
+        progress = user_store._progress_bucket(payload.user_id, payload.module_id)
+        repo.save_module_progress(payload.user_id, payload.module_id, progress)
+        tracker.record_progress(payload.user_id, payload.module_id, progress)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return ModuleContentResponse(**stored)
@@ -224,6 +228,18 @@ def complete_chapter(payload: ChapterCompleteRequest) -> dict:
     return {"chapter": chapter}
 
 
+
+
+@router.post("/modules/course/complete")
+def complete_course(payload: CourseCompleteRequest) -> dict:
+    try:
+        progress = user_store.complete_course(payload.user_id, payload.module_id)
+        repo.save_module_progress(payload.user_id, payload.module_id, progress)
+        tracker.record_progress(payload.user_id, payload.module_id, progress)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"module_id": payload.module_id, "course_completed": True}
+
 @router.post("/modules/quiz/submit", response_model=QuizSubmitResponse)
 def submit_module_quiz(payload: ModuleQuizSubmitRequest) -> QuizSubmitResponse:
     try:
@@ -235,6 +251,9 @@ def submit_module_quiz(payload: ModuleQuizSubmitRequest) -> QuizSubmitResponse:
             payload.answer,
         )
         repo.save_quiz_submission(payload.user_id, payload.module_id, payload.quiz_id, result["score"], result["total"])
+        progress = user_store._progress_bucket(payload.user_id, payload.module_id)
+        repo.save_module_progress(payload.user_id, payload.module_id, progress)
+        tracker.record_progress(payload.user_id, payload.module_id, progress)
         tracker.record_quiz_performance(payload.user_id, payload.quiz_id, result["score"], result["total"])
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

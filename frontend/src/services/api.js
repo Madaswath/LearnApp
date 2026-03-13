@@ -9,6 +9,7 @@ export const login = async (payload) => (await api.post('/auth/login', payload))
 export const saveProfile = async (payload) => (await api.post('/settings/profile', payload)).data
 export const getProfile = async (userId) => (await api.get(`/settings/profile/${userId}`)).data
 
+export const fetchKnowledgeTopics = async () => (await api.get('/knowledge/topics')).data
 export const searchTopicModules = async (payload) => (await api.post('/topics/search', payload)).data
 export const enrollModule = async (payload) => (await api.post('/enroll', payload)).data
 export const fetchEnrollments = async (userId) => (await api.get(`/enrollments/${userId}`)).data
@@ -19,6 +20,7 @@ export const completeLesson = async (payload) => (await api.post('/modules/lesso
 export const submitModuleExercise = async (payload) => (await api.post('/modules/exercise/submit', payload)).data
 export const completeChapter = async (payload) => (await api.post('/modules/chapter/complete', payload)).data
 export const submitModuleQuiz = async (payload) => (await api.post('/modules/quiz/submit', payload)).data
+export const completeCourse = async (payload) => (await api.post('/modules/course/complete', payload)).data
 export const fetchModuleEvaluation = async (userId, moduleId) => (await api.get(`/modules/${userId}/${moduleId}/evaluation`)).data
 
 export const trackProgress = async (payload) => (await api.post('/progress/track', payload)).data
