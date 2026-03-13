@@ -23,14 +23,9 @@ export default function Register({ auth }) {
     e.preventDefault()
     setError('')
     setSuccess('')
-    if (!strong) {
-      setError('Password does not meet the security policy.')
-      return
-    }
-    if (form.password !== form.confirm_password) {
-      setError('Password and re-entered password must match.')
-      return
-    }
+    if (!strong) return setError('Password does not meet the security policy.')
+    if (form.password !== form.confirm_password) return setError('Password and re-entered password must match.')
+
     try {
       const user = await signup(form)
       auth.setUser(user)
@@ -41,20 +36,18 @@ export default function Register({ auth }) {
     }
   }
 
-  const checkLine = (ok, label) => (
-    <li className={`text-xs ${ok ? 'text-emerald-300' : 'text-slate-400'}`}>{ok ? '✓' : '•'} {label}</li>
-  )
+  const checkLine = (ok, label) => <li className={`text-xs ${ok ? 'text-emerald-700' : 'text-slate-500'}`}>{ok ? '✓' : '•'} {label}</li>
 
   return (
-    <div className="min-h-screen grid place-items-center bg-slate-950 text-slate-100 p-4">
+    <div className="min-h-screen grid place-items-center bg-gradient-to-br from-indigo-50 via-white to-cyan-50 text-slate-900 p-4">
       <form onSubmit={submit} className="card w-full max-w-md space-y-3">
         <h2 className="text-2xl font-semibold">Create secure account</h2>
-        <input className="w-full bg-slate-800 rounded p-2" placeholder="Full name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} required />
-        <input className="w-full bg-slate-800 rounded p-2" placeholder="Email" type="email" value={form.email} onChange={(e)=>setForm({...form,email:e.target.value})} required />
-        <input className="w-full bg-slate-800 rounded p-2" placeholder="Password" type="password" value={form.password} onChange={(e)=>setForm({...form,password:e.target.value})} required />
-        <input className="w-full bg-slate-800 rounded p-2" placeholder="Re-enter password" type="password" value={form.confirm_password} onChange={(e)=>setForm({...form,confirm_password:e.target.value})} required />
+        <input className="w-full bg-slate-100 rounded p-2" placeholder="Full name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} required />
+        <input className="w-full bg-slate-100 rounded p-2" placeholder="Email" type="email" value={form.email} onChange={(e)=>setForm({...form,email:e.target.value})} required />
+        <input className="w-full bg-slate-100 rounded p-2" placeholder="Password" type="password" value={form.password} onChange={(e)=>setForm({...form,password:e.target.value})} required />
+        <input className="w-full bg-slate-100 rounded p-2" placeholder="Re-enter password" type="password" value={form.confirm_password} onChange={(e)=>setForm({...form,confirm_password:e.target.value})} required />
 
-        <ul className="grid grid-cols-1 gap-1 border border-slate-700 rounded-lg p-3 bg-slate-900/70">
+        <ul className="grid gap-1 border border-slate-200 rounded-lg p-3 bg-slate-50">
           {checkLine(checks.length, 'At least 8 characters')}
           {checkLine(checks.upper, 'One uppercase letter')}
           {checkLine(checks.lower, 'One lowercase letter')}
@@ -62,10 +55,10 @@ export default function Register({ auth }) {
           {checkLine(checks.symbol, 'One special character')}
         </ul>
 
-        {error && <p className="text-rose-400 text-sm">{error}</p>}
-        {success && <p className="text-emerald-300 text-sm">{success}</p>}
-        <button className="w-full bg-emerald-600 hover:bg-emerald-500 rounded p-2">Create account</button>
-        <p className="text-sm text-slate-400">Already have an account? <Link to="/login" className="text-indigo-400">Login</Link></p>
+        {error && <p className="text-rose-600 text-sm">{error}</p>}
+        {success && <p className="text-emerald-700 text-sm">{success}</p>}
+        <button className="w-full bg-emerald-600 text-white hover:bg-emerald-500 rounded p-2">Create account</button>
+        <p className="text-sm text-slate-500">Already have an account? <Link to="/login" className="text-indigo-600">Login</Link></p>
       </form>
     </div>
   )
