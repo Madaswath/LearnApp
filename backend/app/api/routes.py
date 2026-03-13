@@ -3,6 +3,7 @@ from app.core.config import settings
 from app.models.schemas import (
     ActivityTrackRequest,
     AuthResponse,
+    ChapterCompleteRequest,
     EnrollRequest,
     EnrollResponse,
     ExerciseItem,
@@ -11,9 +12,13 @@ from app.models.schemas import (
     HealthResponse,
     LearningPathRequest,
     LearningPathResponse,
+    LessonCompleteRequest,
     LoginRequest,
     MentorMessageRequest,
     MentorMessageResponse,
+    ModuleBuildRequest,
+    ModuleContentResponse,
+    ModuleQuizSubmitRequest,
     ProjectItem,
     QuizItem,
     QuizSubmitRequest,
@@ -100,6 +105,58 @@ def list_enrollments(user_id: str) -> dict:
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return {"user_id": user_id, "enrollments": enrollments}
+
+
+@router.post("/modules/build", response_model=ModuleContentResponse)
+def build_module(payload: ModuleBuildRequest) -> ModuleContentResponse:
+    module_data = curriculum_builder.build_module_content(payload.topic, payload.difficulty, payload.module_id)
+    try:
+        stored = user_store.set_module_instance(payload.user_id, payload.module_id, module_data)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return ModuleContentResponse(**stored)
+
+
+@router.get("/modules/{user_id}/{module_id}", response_model=ModuleContentResponse)
+def get_module(user_id: str, module_id: str) -> ModuleContentResponse:
+    try:
+        module = user_store.get_module_instance(user_id, module_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return ModuleContentResponse(**module)
+
+
+@router.post("/modules/lesson/complete")
+def complete_lesson(payload: LessonCompleteRequest) -> dict:
+    try:
+        lesson = user_store.complete_lesson(payload.user_id, payload.module_id, payload.chapter_id, payload.lesson_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"lesson": lesson}
+
+
+@router.post("/modules/chapter/complete")
+def complete_chapter(payload: ChapterCompleteRequest) -> dict:
+    try:
+        chapter = user_store.complete_chapter(payload.user_id, payload.module_id, payload.chapter_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"chapter": chapter}
+
+
+@router.post("/modules/quiz/submit", response_model=QuizSubmitResponse)
+def submit_module_quiz(payload: ModuleQuizSubmitRequest) -> QuizSubmitResponse:
+    try:
+        result = user_store.submit_module_quiz(
+            payload.user_id,
+            payload.module_id,
+            payload.chapter_id,
+            payload.quiz_id,
+            payload.answer,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return QuizSubmitResponse(**result)
 
 
 @router.post("/progress/track")

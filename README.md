@@ -19,6 +19,8 @@ Lumina AI is a production-oriented personalized learning platform combining a Re
 - Topic search that generates detailed beginner/intermediate/advanced modules (lessons + concepts + projects).
 - Enrollment flow and activity-based progress tracking dashboard/analytics.
 - Fully wired Exercises, Quizzes, and Projects tabs with API-backed content and submissions.
+- Selected learning module now generates chapter-by-chapter content with lessons, quizzes, exercises, and a demo project.
+- Module navigation supports lesson/chapter completion and quiz submission tracking.
 - Settings page for personal profile data save.
 - Curriculum/exercise/quiz/project orchestration pipeline.
 - Adaptive recommendations driven by progress metrics.
@@ -70,6 +72,11 @@ Key endpoints:
 - `GET /quizzes`
 - `POST /quizzes/submit`
 - `GET /projects`
+- `POST /modules/build`
+- `GET /modules/{user_id}/{module_id}`
+- `POST /modules/lesson/complete`
+- `POST /modules/chapter/complete`
+- `POST /modules/quiz/submit`
 
 ## Frontend Setup
 

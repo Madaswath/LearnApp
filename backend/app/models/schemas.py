@@ -84,12 +84,89 @@ class ProgressSnapshot(BaseModel):
     completed_lessons: int
     completed_concepts: int
     time_spent_minutes: int
+    completed_chapters: int = 0
+    quizzes_passed: int = 0
     last_activity: Optional[str] = None
 
 
 class UserProgressResponse(BaseModel):
     user_id: str
     progress: List[ProgressSnapshot]
+
+
+class ModuleBuildRequest(BaseModel):
+    user_id: str
+    module_id: str
+    topic: str
+    difficulty: str
+
+
+class ModuleLesson(BaseModel):
+    lesson_id: str
+    title: str
+    concepts: List[str]
+    completed: bool = False
+
+
+class ModuleExercise(BaseModel):
+    exercise_id: str
+    prompt: str
+    completed: bool = False
+
+
+class ModuleQuiz(BaseModel):
+    quiz_id: str
+    question: str
+    options: List[str]
+    answer: str
+    completed: bool = False
+    score: int = 0
+
+
+class ModuleChapter(BaseModel):
+    chapter_id: str
+    title: str
+    lessons: List[ModuleLesson]
+    exercises: List[ModuleExercise]
+    quizzes: List[ModuleQuiz]
+    completed: bool = False
+
+
+class ModuleProject(BaseModel):
+    project_id: str
+    title: str
+    description: str
+    milestones: List[str]
+
+
+class ModuleContentResponse(BaseModel):
+    module_id: str
+    topic: str
+    difficulty: str
+    title: str
+    chapters: List[ModuleChapter]
+    project: ModuleProject
+
+
+class LessonCompleteRequest(BaseModel):
+    user_id: str
+    module_id: str
+    chapter_id: str
+    lesson_id: str
+
+
+class ChapterCompleteRequest(BaseModel):
+    user_id: str
+    module_id: str
+    chapter_id: str
+
+
+class ModuleQuizSubmitRequest(BaseModel):
+    user_id: str
+    module_id: str
+    chapter_id: str
+    quiz_id: str
+    answer: str
 
 
 class ExerciseItem(BaseModel):
