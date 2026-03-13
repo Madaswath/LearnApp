@@ -1,0 +1,4 @@
+PDF Extract: Attention Is All You Need (summary)
+- Self-attention computes token relationships in parallel.
+- Multi-head attention captures diverse dependency patterns.
+- Positional encodings inject sequence order.
